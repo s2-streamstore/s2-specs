@@ -1,0 +1,15 @@
+version: v2
+
+modules:
+  - name: buf.build/streamstore/s2
+    lint:
+      use:
+        - STANDARD
+        - COMMENTS
+      except:
+        - COMMENT_ENUM
+        - COMMENT_MESSAGE
+
+breaking:
+  use:
+    - WIRE
