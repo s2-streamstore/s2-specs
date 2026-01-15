@@ -1,13 +1,19 @@
-name: Trigger grpc p2-proto-update for downstream sdks
+name: Trigger s2-specs-update for downstream repos
 on:
   push:
     paths:
-      - 's2/**/*.proto'
+      - "s2/**"
 jobs:
   dispatch:
     strategy:
       matrix:
-        repo: ['s2-streamstore/s2-sdk-python', 's2-streamstore/s2-sdk-java', 's2-streamstore/s2-sdk-go', 's2-streamstore/s2-sdk-rust', 's2-streamstore/s2']
+        repo:
+          - "s2-streamstore/docs"
+          - "s2-streamstore/s2"
+          - "s2-streamstore/s2-sdk-typescript"
+          - "s2-streamstore/s2-sdk-go"
+          - "s2-streamstore/s2-sdk-python"
+          - "s2-streamstore/s2-sdk-java"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -21,5 +27,5 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ matrix.repo }}
-          event-type: s2-proto-update
+          event-type: s2-specs-update
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
