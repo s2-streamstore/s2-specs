@@ -29,7 +29,7 @@
           {
             "name": "prefix",
             "in": "query",
-            "description": "Filter to access tokens whose ID begins with this prefix.",
+            "description": "Filter to access tokens whose IDs begin with this prefix.",
             "required": false,
             "schema": {
               "type": "string",
@@ -39,7 +39,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to access tokens whose ID lexicographically starts after this string.",
+            "description": "Filter to access tokens whose IDs lexicographically start after this string.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1022,7 +1022,7 @@
           {
             "name": "prefix",
             "in": "query",
-            "description": "Filter to streams whose name begins with this prefix.",
+            "description": "Filter to streams whose names begin with this prefix.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1032,7 +1032,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to streams whose name begins with this prefix.\nIt must be greater than or equal to the `prefix` if specified.",
+            "description": "Filter to streams whose names lexicographically start after this string.\nIt must be greater than or equal to the `prefix` if specified.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2504,10 +2504,8 @@
       "Header": {
         "type": "array",
         "items": {
-          "type": "string",
-          "description": "Headers add structured information to a record as name-value pairs.\n\nThe name cannot be empty, with the exception of an S2 command record."
+          "type": "string"
         },
-        "description": "Headers add structured information to a record as name-value pairs.\n\nThe name cannot be empty, with the exception of an S2 command record.",
         "maxItems": 2,
         "minItems": 2
       },
