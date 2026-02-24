@@ -1315,7 +1315,7 @@
                     "type": "null"
                   },
                   {
-                    "$ref": "#/components/schemas/StreamConfig"
+                    "$ref": "#/components/schemas/StreamReconfiguration"
                   }
                 ]
               }
@@ -2222,11 +2222,13 @@
         "properties": {
           "create_stream_on_append": {
             "type": "boolean",
-            "description": "Create stream on append if it doesn't exist, using the default stream configuration."
+            "description": "Create stream on append if it doesn't exist, using the default stream configuration.",
+            "default": false
           },
           "create_stream_on_read": {
             "type": "boolean",
-            "description": "Create stream on read if it doesn't exist, using the default stream configuration."
+            "description": "Create stream on read if it doesn't exist, using the default stream configuration.",
+            "default": false
           },
           "default_stream_config": {
             "oneOf": [
@@ -2372,8 +2374,8 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/BasinConfig",
-                "description": "Basin configuration."
+                "$ref": "#/components/schemas/BasinReconfiguration",
+                "description": "Basin reconfiguration."
               }
             ]
           },
