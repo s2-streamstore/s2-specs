@@ -2327,7 +2327,6 @@
         "type": "string",
         "enum": [
           "active",
-          "creating",
           "deleting"
         ]
       },
