@@ -13,7 +13,6 @@ jobs:
           - "s2-streamstore/s2-sdk-typescript"
           - "s2-streamstore/s2-sdk-go"
           - "s2-streamstore/s2-sdk-python"
-          - "s2-streamstore/s2-sdk-java"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
