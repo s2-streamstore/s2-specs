@@ -1,6 +1,8 @@
 name: Trigger s2-specs-update for downstream repos
 on:
   push:
+    branches:
+      - main
     paths:
       - "s2/**"
 jobs:
