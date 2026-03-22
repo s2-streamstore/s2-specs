@@ -1002,7 +1002,7 @@
     "/streams": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1199,7 +1199,7 @@
     "/streams/{stream}": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1552,7 +1552,7 @@
     "/streams/{stream}/records": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1858,7 +1858,7 @@
     "/streams/{stream}/records/tail": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
