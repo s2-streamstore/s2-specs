@@ -1002,7 +1002,7 @@
     "/streams": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1199,7 +1199,7 @@
     "/streams/{stream}": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1552,7 +1552,7 @@
     "/streams/{stream}/records": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -1858,7 +1858,7 @@
     "/streams/{stream}/records/tail": {
       "servers": [
         {
-          "url": "https://{basin}.b.aws.s2.dev/v1",
+          "url": "https://{basin}.b.s2.dev/v1",
           "description": "Endpoint for the basin",
           "variables": {
             "basin": {
@@ -2247,9 +2247,22 @@
         "type": "object",
         "required": [
           "name",
-          "state"
+          "created_at"
         ],
         "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation time in RFC 3339 format."
+          },
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Deletion time in RFC 3339 format, if the basin is being deleted."
+          },
           "name": {
             "$ref": "#/components/schemas/BasinNameStr",
             "description": "Basin name."
@@ -2264,10 +2277,6 @@
                 "description": "Basin scope."
               }
             ]
-          },
-          "state": {
-            "$ref": "#/components/schemas/BasinState",
-            "description": "Basin state."
           }
         }
       },
