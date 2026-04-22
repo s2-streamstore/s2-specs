@@ -1588,6 +1588,15 @@
             }
           },
           {
+            "name": "s2-encryption-key",
+            "in": "header",
+            "description": "Encryption key material for append and read operations.\nProvide base64-encoded key when stream encryption is enabled.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "seq_num",
             "in": "query",
             "description": "Start from a sequence number.",
@@ -1768,6 +1777,15 @@
             "required": false,
             "schema": {
               "$ref": "#/components/schemas/Format"
+            }
+          },
+          {
+            "name": "s2-encryption-key",
+            "in": "header",
+            "description": "Encryption key material for append and read operations.\nProvide base64-encoded key when stream encryption is enabled.",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2240,6 +2258,17 @@
                 "description": "Default stream configuration."
               }
             ]
+          },
+          "stream_cipher": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EncryptionAlgorithm",
+                "description": "Encryption algorithm to apply to newly created streams in the basin."
+              }
+            ]
           }
         }
       },
@@ -2321,6 +2350,17 @@
               {
                 "$ref": "#/components/schemas/StreamReconfiguration",
                 "description": "Basin configuration."
+              }
+            ]
+          },
+          "stream_cipher": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EncryptionAlgorithm",
+                "description": "Encryption algorithm to apply to newly created streams in the basin."
               }
             ]
           }
@@ -2447,6 +2487,13 @@
             "minimum": 0
           }
         }
+      },
+      "EncryptionAlgorithm": {
+        "type": "string",
+        "enum": [
+          "aegis-256",
+          "aes-256-gcm"
+        ]
       },
       "ErrorInfo": {
         "type": "object",
@@ -3062,6 +3109,17 @@
           "created_at"
         ],
         "properties": {
+          "cipher": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EncryptionAlgorithm",
+                "description": "Encryption algorithm for this stream, if encryption is enabled."
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
