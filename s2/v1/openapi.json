@@ -2369,7 +2369,9 @@
       "BasinScope": {
         "type": "string",
         "enum": [
-          "aws:us-east-1"
+          "aws:us-east-1",
+          "aws:us-west-2",
+          "aws:eu-north-1"
         ]
       },
       "BasinState": {
@@ -2407,7 +2409,7 @@
               },
               {
                 "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope."
+                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`."
               }
             ]
           }
@@ -2434,7 +2436,7 @@
               },
               {
                 "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nThis cannot be reconfigured."
+                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`.\nThis cannot be reconfigured."
               }
             ]
           }
