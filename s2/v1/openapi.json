@@ -2436,7 +2436,7 @@
               },
               {
                 "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`.\nThis cannot be reconfigured."
+                "description": "Basin scope.\nIf omitted when creating, defaults to `aws:us-east-1`.\nThis cannot be reconfigured."
               }
             ]
           }
