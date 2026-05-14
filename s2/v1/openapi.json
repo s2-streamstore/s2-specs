@@ -477,8 +477,8 @@
         "tags": [
           "basins"
         ],
-        "summary": "Create or reconfigure a basin.",
-        "operationId": "create_or_reconfigure_basin",
+        "summary": "Ensure a basin.",
+        "operationId": "ensure_basin",
         "parameters": [
           {
             "name": "basin",
@@ -499,7 +499,7 @@
                     "type": "null"
                   },
                   {
-                    "$ref": "#/components/schemas/CreateOrReconfigureBasinRequest"
+                    "$ref": "#/components/schemas/EnsureBasinRequest"
                   }
                 ]
               }
@@ -1293,8 +1293,8 @@
         "tags": [
           "streams"
         ],
-        "summary": "Create or reconfigure a stream.",
-        "operationId": "create_or_reconfigure_stream",
+        "summary": "Ensure a stream.",
+        "operationId": "ensure_stream",
         "parameters": [
           {
             "name": "stream",
@@ -1315,7 +1315,7 @@
                     "type": "null"
                   },
                   {
-                    "$ref": "#/components/schemas/StreamReconfiguration"
+                    "$ref": "#/components/schemas/StreamConfig"
                   }
                 ]
               }
@@ -2415,33 +2415,6 @@
           }
         }
       },
-      "CreateOrReconfigureBasinRequest": {
-        "type": "object",
-        "properties": {
-          "config": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BasinReconfiguration",
-                "description": "Basin reconfiguration."
-              }
-            ]
-          },
-          "scope": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`.\nThis cannot be reconfigured."
-              }
-            ]
-          }
-        }
-      },
       "CreateStreamRequest": {
         "type": "object",
         "required": [
@@ -2496,6 +2469,33 @@
           "aegis-256",
           "aes-256-gcm"
         ]
+      },
+      "EnsureBasinRequest": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasinConfig",
+                "description": "Basin configuration."
+              }
+            ]
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasinScope",
+                "description": "Basin scope.\nIf omitted when creating, defaults to `aws:us-east-1`.\nThis cannot be changed."
+              }
+            ]
+          }
+        }
       },
       "ErrorInfo": {
         "type": "object",
