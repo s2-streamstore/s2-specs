@@ -2297,15 +2297,11 @@
             "description": "Basin name."
           },
           "scope": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Basin scope."
           }
         }
       },
@@ -2366,14 +2362,6 @@
           }
         }
       },
-      "BasinScope": {
-        "type": "string",
-        "enum": [
-          "aws:us-east-1",
-          "aws:us-west-2",
-          "aws:eu-north-1"
-        ]
-      },
       "BasinState": {
         "type": "string",
         "enum": [
@@ -2403,15 +2391,11 @@
             ]
           },
           "scope": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Basin scope.\nIf omitted when creating, uses the configured default scope."
           }
         }
       },
@@ -2485,15 +2469,11 @@
             ]
           },
           "scope": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted when creating, defaults to `aws:us-east-1`.\nThis cannot be changed."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Basin scope.\nIf omitted when creating, uses the configured default scope.\nThis cannot be changed."
           }
         }
       },
