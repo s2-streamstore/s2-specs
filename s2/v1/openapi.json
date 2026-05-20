@@ -723,6 +723,160 @@
         }
       }
     },
+    "/locations": {
+      "get": {
+        "tags": [
+          "locations"
+        ],
+        "summary": "List locations.",
+        "operationId": "list_locations",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationInfo"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/locations/default": {
+      "get": {
+        "tags": [
+          "locations"
+        ],
+        "summary": "Get the default location.",
+        "operationId": "get_default_location",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "locations"
+        ],
+        "summary": "Set the default location.",
+        "operationId": "set_default_location",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "tags": [
@@ -2332,20 +2486,20 @@
             "format": "date-time",
             "description": "Deletion time in RFC 3339 format, if the basin is being deleted."
           },
-          "name": {
-            "$ref": "#/components/schemas/BasinNameStr",
-            "description": "Basin name."
-          },
-          "scope": {
+          "location": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope."
+                "$ref": "#/components/schemas/LocationName",
+                "description": "Basin location."
               }
             ]
+          },
+          "name": {
+            "$ref": "#/components/schemas/BasinNameStr",
+            "description": "Basin name."
           }
         }
       },
@@ -2406,14 +2560,6 @@
           }
         }
       },
-      "BasinScope": {
-        "type": "string",
-        "enum": [
-          "aws:us-east-1",
-          "aws:us-west-2",
-          "aws:eu-north-1"
-        ]
-      },
       "BasinState": {
         "type": "string",
         "enum": [
@@ -2442,14 +2588,14 @@
               }
             ]
           },
-          "scope": {
+          "location": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted, defaults to `aws:us-east-1`."
+                "$ref": "#/components/schemas/LocationName",
+                "description": "Basin location.\nIf omitted when creating, uses the default location for the service."
               }
             ]
           }
@@ -2524,14 +2670,14 @@
               }
             ]
           },
-          "scope": {
+          "location": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/BasinScope",
-                "description": "Basin scope.\nIf omitted when creating, defaults to `aws:us-east-1`.\nThis cannot be changed."
+                "$ref": "#/components/schemas/LocationName",
+                "description": "Basin location.\nIf omitted when creating, uses the default location for the service.\nThis cannot be changed."
               }
             ]
           }
@@ -2706,6 +2852,28 @@
           }
         }
       },
+      "LocationInfo": {
+        "type": "object",
+        "required": [
+          "name",
+          "is_private"
+        ],
+        "properties": {
+          "is_private": {
+            "type": "boolean",
+            "description": "Location represents a private placement, limited by account."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocationName",
+            "description": "Location name."
+          }
+        }
+      },
+      "LocationName": {
+        "type": "string",
+        "maxLength": 64,
+        "minLength": 1
+      },
       "Metric": {
         "oneOf": [
           {
@@ -2807,7 +2975,10 @@
           "fence",
           "account-metrics",
           "basin-metrics",
-          "stream-metrics"
+          "stream-metrics",
+          "list-locations",
+          "get-default-location",
+          "set-default-location"
         ]
       },
       "PermittedOperationGroups": {
@@ -3364,6 +3535,10 @@
     {
       "name": "access-tokens",
       "description": "Manage access tokens"
+    },
+    {
+      "name": "locations",
+      "description": "Manage locations"
     },
     {
       "name": "streams",
