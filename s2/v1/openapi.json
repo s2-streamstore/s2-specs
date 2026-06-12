@@ -248,7 +248,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to basins whose names lexicographically start after this string.\nIt must be greater than or equal to the `prefix` if specified.",
+            "description": "Filter to basins whose names lexicographically start after this string.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1216,7 +1216,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to streams whose names lexicographically start after this string.\nIt must be greater than or equal to the `prefix` if specified.",
+            "description": "Filter to streams whose names lexicographically start after this string.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2595,7 +2595,7 @@
               },
               {
                 "$ref": "#/components/schemas/LocationName",
-                "description": "Basin location.\nIf omitted when creating, uses the default location for the service."
+                "description": "Basin location.\nIf omitted when creating, uses the default location for the account."
               }
             ]
           }
@@ -2677,7 +2677,7 @@
               },
               {
                 "$ref": "#/components/schemas/LocationName",
-                "description": "Basin location.\nIf omitted when creating, uses the default location for the service.\nThis cannot be changed."
+                "description": "Basin location.\nIf omitted when creating, uses the default location for the account.\nThis cannot be changed."
               }
             ]
           }
