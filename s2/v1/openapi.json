@@ -14,7 +14,7 @@
   },
   "servers": [
     {
-      "url": "https://aws.s2.dev/v1"
+      "url": "https://a.s2.dev/v1"
     }
   ],
   "paths": {
@@ -112,7 +112,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AccessTokenInfo"
+                "$ref": "#/components/schemas/IssueAccessTokenRequest"
               }
             }
           },
@@ -2173,13 +2173,13 @@
         "type": "object",
         "required": [
           "id",
+          "auto_prefix_streams",
           "scope"
         ],
         "properties": {
           "auto_prefix_streams": {
             "type": "boolean",
-            "description": "Namespace streams based on the configured stream-level scope, which must be a prefix.\nStream name arguments will be automatically prefixed, and the prefix will be stripped when listing streams.",
-            "default": false
+            "description": "Namespace streams based on the configured stream-level scope."
           },
           "expires_at": {
             "type": [
@@ -2187,11 +2187,11 @@
               "null"
             ],
             "format": "date-time",
-            "description": "Expiration time in RFC 3339 format.\nIf not set, the expiration will be set to that of the requestor's token."
+            "description": "Expiration time in RFC 3339 format."
           },
           "id": {
             "$ref": "#/components/schemas/AccessTokenIdStr",
-            "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length."
+            "description": "Access token ID."
           },
           "scope": {
             "$ref": "#/components/schemas/AccessTokenScope",
@@ -2756,6 +2756,36 @@
       },
       "InfiniteRetention": {
         "type": "object"
+      },
+      "IssueAccessTokenRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "scope"
+        ],
+        "properties": {
+          "auto_prefix_streams": {
+            "type": "boolean",
+            "description": "Namespace streams based on the configured stream-level scope, which must be a prefix.\nStream name arguments will be automatically prefixed, and the prefix will be stripped when listing streams.",
+            "default": false
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Expiration time in RFC 3339 format.\nIf not set, the expiration will be set to that of the requestor's token."
+          },
+          "id": {
+            "$ref": "#/components/schemas/AccessTokenIdStr",
+            "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AccessTokenScope",
+            "description": "Access token scope."
+          }
+        }
       },
       "IssueAccessTokenResponse": {
         "type": "object",
