@@ -3052,12 +3052,18 @@
       "PingEventData": {
         "type": "object",
         "required": [
-          "timestamp"
+          "timestamp",
+          "tail"
         ],
         "properties": {
+          "tail": {
+            "$ref": "#/components/schemas/StreamPosition",
+            "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record."
+          },
           "timestamp": {
             "type": "integer",
             "format": "int64",
+            "description": "Time the ping was emitted, as Unix epoch milliseconds.",
             "minimum": 0
           }
         }
