@@ -28,8 +28,8 @@ _All integers use big-endian byte order. Messages smaller than 1KiB should not b
 
 #### Reconnect advice
 
-A server that is about to terminate sets the reconnect-advised flag on regular messages. The message body is unchanged, so clients that ignore the flag keep working.
+A server that is about to terminate sets the reconnect-advised flag on regular messages.
 
 * **Read** sessions should be re-established with a fresh request.
-* **Append** sessions should stop sending inputs and half-close the request stream. The server acknowledges all accepted inputs and then ends the session cleanly.
+* **Append** sessions should stop sending inputs and half-close the request stream. The server acknowledges all accepted inputs and then ends the session cleanly. A new session can be established concurrently, and should start being used once all acknowledgements for in-flight appends have been received.
 * Append sessions still attached when the server drains are ended by the server: it stops reading inputs, acknowledges accepted inputs, and sends a terminal `503` with error code `server_draining`. Acknowledgements always precede the terminal message, so an input is either acknowledged or was never processed, and unresolved inputs can be safely resubmitted on a new session.
