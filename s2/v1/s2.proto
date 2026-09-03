@@ -34,6 +34,67 @@ message AppendRecord {
   bytes body = 3;
 }
 
+// Storage class for recent writes.
+enum StorageClass {
+  // Unspecified, treated as unset.
+  STORAGE_CLASS_UNSPECIFIED = 0;
+  // Append tail latency under 400 milliseconds with s2.dev.
+  STORAGE_CLASS_STANDARD = 1;
+  // Append tail latency under 40 milliseconds with s2.dev.
+  STORAGE_CLASS_EXPRESS = 2;
+}
+
+// Timestamping mode for appends that influences how timestamps are handled.
+enum TimestampingMode {
+  // Unspecified, treated as unset.
+  TIMESTAMPING_MODE_UNSPECIFIED = 0;
+  // Prefer client-specified timestamp if present otherwise use arrival time.
+  TIMESTAMPING_MODE_CLIENT_PREFER = 1;
+  // Require a client-specified timestamp and reject the append if it is missing.
+  TIMESTAMPING_MODE_CLIENT_REQUIRE = 2;
+  // Use the arrival time and ignore any client-specified timestamp.
+  TIMESTAMPING_MODE_ARRIVAL = 3;
+}
+
+// Timestamping behavior.
+message TimestampingConfig {
+  // Timestamping mode for appends that influences how timestamps are handled.
+  optional TimestampingMode mode = 1;
+  // Allow client-specified timestamps to exceed the arrival time.
+  // If this is `false` or not set, client timestamps will be capped at the arrival time.
+  optional bool uncapped = 2;
+}
+
+// Delete-on-empty configuration.
+message DeleteOnEmptyConfig {
+  // Minimum age in seconds before an empty stream can be deleted.
+  // Set to 0 (default) to disable delete-on-empty (don't delete automatically).
+  uint64 min_age_secs = 1;
+}
+
+// Stream configuration.
+// Unset fields inherit from the basin's default stream configuration.
+message StreamConfig {
+  // Retain records unless explicitly trimmed.
+  message InfiniteRetention {}
+
+  // Storage class for recent writes.
+  optional StorageClass storage_class = 1;
+  // Retention policy for the stream.
+  // If unspecified, the default is to retain records for 7 days.
+  oneof retention_policy {
+    // Age in seconds for automatic trimming of records older than this threshold.
+    // This must be set to a value greater than 0 seconds.
+    uint64 age = 2;
+    // Retain records unless explicitly trimmed.
+    InfiniteRetention infinite = 3;
+  }
+  // Timestamping behavior.
+  TimestampingConfig timestamping = 4;
+  // Delete-on-empty configuration.
+  DeleteOnEmptyConfig delete_on_empty = 5;
+}
+
 // Payload of an Append request message.
 message AppendInput {
   // Batch of records to append atomically, which must contain at least one record, and no more than 1000.
@@ -43,6 +104,10 @@ message AppendInput {
   optional uint64 match_seq_num = 2;
   // Enforce a fencing token which must have been previously set by a `fence` command record.
   optional string fencing_token = 3;
+  // Stream configuration to apply if this append creates the stream via the basin's `create_stream_on_append` setting.
+  // Unset fields inherit the basin's default stream configuration.
+  // Ignored if the stream already exists.
+  StreamConfig create_stream_config = 4;
 }
 
 // Success response message to an Append request.

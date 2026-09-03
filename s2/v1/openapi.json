@@ -2370,6 +2370,17 @@
           "records"
         ],
         "properties": {
+          "create_stream_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamConfig",
+                "description": "Stream configuration to apply if this append creates the stream via the basin's `create_stream_on_append` setting.\nUnset fields inherit the basin's `default_stream_config`.\nIgnored if the stream already exists."
+              }
+            ]
+          },
           "fencing_token": {
             "oneOf": [
               {
