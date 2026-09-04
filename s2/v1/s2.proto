@@ -73,7 +73,6 @@ message DeleteOnEmptyConfig {
 }
 
 // Stream configuration.
-// Unset fields inherit from the basin's default stream configuration.
 message StreamConfig {
   // Retain records unless explicitly trimmed.
   message InfiniteRetention {}
@@ -105,7 +104,7 @@ message AppendInput {
   // Enforce a fencing token which must have been previously set by a `fence` command record.
   optional string fencing_token = 3;
   // Stream configuration to apply if this append creates the stream via the basin's `create_stream_on_append` setting.
-  // Unset fields inherit the basin's default stream configuration.
+  // Unset fields inherit the basin's `default_stream_config`.
   // Ignored if the stream already exists.
   StreamConfig create_stream_config = 4;
 }
