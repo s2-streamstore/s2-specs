@@ -1985,7 +1985,7 @@
           {
             "name": "s2-stream-config",
             "in": "header",
-            "description": "Stream configuration to apply only if this request creates the stream via the basin's `create_stream_on_append` setting,\nencoded as compact JSON in the shape of `StreamConfig`. Unset fields inherit the basin's `default_stream_config`.\nIgnored if the stream already exists; it never reconfigures an existing stream.",
+            "description": "Stream configuration to apply if the stream is created on append, as compact JSON in the shape of `StreamConfig`.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
             "required": false,
             "schema": {
               "type": "string"
