@@ -1793,7 +1793,7 @@
           {
             "name": "s2-stream-config",
             "in": "header",
-            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
+            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIf the stream already exists, its configuration must match the set fields, or the request fails with `stream_config_mismatch`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1995,7 +1995,7 @@
           {
             "name": "s2-stream-config",
             "in": "header",
-            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
+            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIf the stream already exists, its configuration must match the set fields, or the request fails with `stream_config_mismatch`.",
             "required": false,
             "schema": {
               "type": "string"
