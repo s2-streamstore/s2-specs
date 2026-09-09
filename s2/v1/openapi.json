@@ -1791,6 +1791,16 @@
             }
           },
           {
+            "name": "s2-stream-config",
+            "in": "header",
+            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "{\"retention_policy\":{\"age\":3600},\"delete_on_empty\":{\"min_age_secs\":300}}"
+          },
+          {
             "name": "seq_num",
             "in": "query",
             "description": "Start from a sequence number.",
@@ -1985,7 +1995,7 @@
           {
             "name": "s2-stream-config",
             "in": "header",
-            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
+            "description": "JSON-encoded `StreamConfig` to apply if the stream is created on append or read.\nUnset fields inherit the basin's default stream configuration.\nIgnored if the stream already exists.",
             "required": false,
             "schema": {
               "type": "string"
