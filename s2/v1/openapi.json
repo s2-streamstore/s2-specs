@@ -29,7 +29,7 @@
           {
             "name": "prefix",
             "in": "query",
-            "description": "Filter to access tokens whose IDs begin with this prefix.",
+            "description": "Filter to access tokens whose IDs begin with this prefix.\nIt must not contain NUL bytes.",
             "required": false,
             "schema": {
               "type": "string",
@@ -39,7 +39,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to access tokens whose IDs lexicographically start after this string.",
+            "description": "Filter to access tokens whose IDs lexicographically start after this string.\nIt must not contain NUL bytes.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1206,7 +1206,7 @@
           {
             "name": "prefix",
             "in": "query",
-            "description": "Filter to streams whose names begin with this prefix.",
+            "description": "Filter to streams whose names begin with this prefix.\nIt must not contain NUL bytes.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1216,7 +1216,7 @@
           {
             "name": "start_after",
             "in": "query",
-            "description": "Filter to streams whose names lexicographically start after this string.",
+            "description": "Filter to streams whose names lexicographically start after this string.\nIt must not contain NUL bytes.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2620,7 +2620,7 @@
           },
           "stream": {
             "$ref": "#/components/schemas/StreamNameStr",
-            "description": "Stream name that is unique to the basin.\nIt can be between 1 and 512 bytes in length."
+            "description": "Stream name that is unique to the basin.\nIt can be between 1 and 512 bytes in length, and must not contain NUL bytes."
           }
         }
       },
@@ -2779,7 +2779,7 @@
           },
           "id": {
             "$ref": "#/components/schemas/AccessTokenIdStr",
-            "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length."
+            "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length, and must not\ncontain NUL bytes."
           },
           "scope": {
             "$ref": "#/components/schemas/AccessTokenScope",
