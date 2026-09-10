@@ -3299,7 +3299,8 @@
         "type": "string",
         "enum": [
           "standard",
-          "express"
+          "express",
+          "native"
         ]
       },
       "StreamConfig": {
