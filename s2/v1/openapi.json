@@ -2931,6 +2931,13 @@
           "is_private"
         ],
         "properties": {
+          "default_storage_class": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Default storage class for this location."
+          },
           "is_private": {
             "type": "boolean",
             "description": "Location represents a private placement, limited by account."
@@ -2938,6 +2945,16 @@
           "name": {
             "$ref": "#/components/schemas/LocationName",
             "description": "Location name."
+          },
+          "storage_classes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Storage classes available to the account in this location."
           }
         }
       },
