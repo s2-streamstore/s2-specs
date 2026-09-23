@@ -3354,13 +3354,6 @@
           }
         }
       },
-      "StorageClass": {
-        "type": "string",
-        "enum": [
-          "standard",
-          "express"
-        ]
-      },
       "StreamConfig": {
         "type": "object",
         "properties": {
@@ -3387,15 +3380,11 @@
             ]
           },
           "storage_class": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StorageClass",
-                "description": "Storage class for recent writes."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Storage class for recent writes."
           },
           "timestamping": {
             "oneOf": [
@@ -3502,15 +3491,11 @@
             ]
           },
           "storage_class": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StorageClass",
-                "description": "Storage class for recent writes."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Storage class for recent writes."
           },
           "timestamping": {
             "oneOf": [
