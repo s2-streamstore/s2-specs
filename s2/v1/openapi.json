@@ -2936,7 +2936,7 @@
               "string",
               "null"
             ],
-            "description": "Default storage class for this location."
+            "description": "Default [storage class](https://s2.dev/docs/storage-classes) for this location."
           },
           "is_private": {
             "type": "boolean",
@@ -2954,7 +2954,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Storage classes available to the account in this location."
+            "description": "[Storage classes](https://s2.dev/docs/storage-classes) available to the account in this location."
           }
         }
       },
@@ -3384,7 +3384,7 @@
               "string",
               "null"
             ],
-            "description": "Storage class for recent writes."
+            "description": "[Storage class](https://s2.dev/docs/storage-classes) for recent writes."
           },
           "timestamping": {
             "oneOf": [
@@ -3495,7 +3495,7 @@
               "string",
               "null"
             ],
-            "description": "Storage class for recent writes."
+            "description": "[Storage class](https://s2.dev/docs/storage-classes) for recent writes."
           },
           "timestamping": {
             "oneOf": [
