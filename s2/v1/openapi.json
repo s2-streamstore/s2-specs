@@ -2931,6 +2931,13 @@
           "is_private"
         ],
         "properties": {
+          "default_storage_class": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Default [storage class](https://s2.dev/docs/storage-classes) for this location."
+          },
           "is_private": {
             "type": "boolean",
             "description": "Location represents a private placement, limited by account."
@@ -2938,6 +2945,16 @@
           "name": {
             "$ref": "#/components/schemas/LocationName",
             "description": "Location name."
+          },
+          "storage_classes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "[Storage classes](https://s2.dev/docs/storage-classes) available to the account in this location."
           }
         }
       },
@@ -3337,13 +3354,6 @@
           }
         }
       },
-      "StorageClass": {
-        "type": "string",
-        "enum": [
-          "standard",
-          "express"
-        ]
-      },
       "StreamConfig": {
         "type": "object",
         "properties": {
@@ -3370,15 +3380,11 @@
             ]
           },
           "storage_class": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StorageClass",
-                "description": "Storage class for recent writes."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[Storage class](https://s2.dev/docs/storage-classes) for recent writes."
           },
           "timestamping": {
             "oneOf": [
@@ -3485,15 +3491,11 @@
             ]
           },
           "storage_class": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StorageClass",
-                "description": "Storage class for recent writes."
-              }
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[Storage class](https://s2.dev/docs/storage-classes) for recent writes."
           },
           "timestamping": {
             "oneOf": [
