@@ -2302,7 +2302,7 @@
       },
       "AccountMetricSet": {
         "type": "string",
-        "description": "Account-level metric sets.\n`estimated-billable-usage` returns estimated USD by billing dimension and as a `total` series.\nIt uses list prices, excluding credits, taxes, and customer-specific pricing; it is not an invoice total.\nSupports hour (default) and day intervals. Only fully processed UTC hours wholly within the requested\nrange contribute. Daily points sum the available processed hours and may be partial because of\nprocessing lag or request boundaries; their estimates can grow as more hours finish processing.\nDaily timestamps identify the start of the UTC day, which may precede the requested start.\nBuckets with processed hours but no usage have a zero total; buckets with no processed hours are omitted.\nDimension series appear when they have usage in a returned bucket, with zeroes in other returned\nbuckets. Accounts without processed billing hours return no series.",
+        "description": "Account-level metric sets.\n`estimated-billable-usage` returns estimated USD by billing dimension and as a `total` series.\nSupports hour (default) and day intervals, aggregating finalized hours. Daily points may be partial.",
         "enum": [
           "active-basins",
           "account-ops",
