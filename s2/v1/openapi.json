@@ -2347,7 +2347,7 @@
                 }
               ]
             },
-            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the accumulated value for the time period starting at the timestamp, spanning one `interval`.\nThe series need not contain every interval in the requested range. An omitted interval is not\nnecessarily zero; availability and completeness depend on the metric set."
+            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the accumulated value for the time period starting at the timestamp, spanning one `interval`."
           }
         }
       },
