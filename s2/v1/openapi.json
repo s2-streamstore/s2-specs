@@ -897,7 +897,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -990,7 +990,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1092,7 +1092,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2302,9 +2302,11 @@
       },
       "AccountMetricSet": {
         "type": "string",
+        "description": "Account-level metric sets.\n`estimated-billable-usage` returns estimated USD by billing dimension and as a `total` series.\nIt uses list prices, excluding credits, taxes, and customer-specific pricing; it is not an invoice total.\nSupports hour (default) and day intervals. Only complete UTC buckets wholly within the requested\nrange are returned, and every hour in a bucket must have finished billing processing.\nCompleted buckets with no usage have a zero total; pending buckets are omitted.\nDimension series appear when they have usage in a returned bucket, with zeroes in other completed\nbuckets. Accounts without processed billing hours return no series.",
         "enum": [
           "active-basins",
-          "account-ops"
+          "account-ops",
+          "estimated-billable-usage"
         ]
       },
       "AccumulationMetric": {
@@ -2345,7 +2347,7 @@
                 }
               ]
             },
-            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the accumulated value for the time period starting at the timestamp, spanning one `interval`."
+            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the accumulated value for the time period starting at the timestamp, spanning one `interval`.\nThe series need not contain every interval in the requested range. An omitted interval is not\nnecessarily zero; availability and completeness depend on the metric set."
           }
         }
       },
@@ -3038,7 +3040,8 @@
         "type": "string",
         "enum": [
           "bytes",
-          "operations"
+          "operations",
+          "usd"
         ]
       },
       "Operation": {
