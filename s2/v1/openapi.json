@@ -897,7 +897,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -990,7 +990,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1092,7 +1092,7 @@
           {
             "name": "start",
             "in": "query",
-            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set. Time ranges may span at most 90 days.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2302,9 +2302,11 @@
       },
       "AccountMetricSet": {
         "type": "string",
+        "description": "Account-level metric sets.\n`estimated-billable-usage` returns estimated USD by billing dimension and as a `total` series.\nSupports hour (default) and day intervals, aggregating finalized hours. Daily points may be partial.",
         "enum": [
           "active-basins",
-          "account-ops"
+          "account-ops",
+          "estimated-billable-usage"
         ]
       },
       "AccumulationMetric": {
@@ -3038,7 +3040,8 @@
         "type": "string",
         "enum": [
           "bytes",
-          "operations"
+          "operations",
+          "usd"
         ]
       },
       "Operation": {
