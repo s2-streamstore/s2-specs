@@ -1,5 +1,6 @@
 name: Trigger s2-specs-update for downstream repos
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -7,14 +8,16 @@ on:
       - "s2/**"
 jobs:
   dispatch:
+    environment: secret
+    permissions: {}
     strategy:
       matrix:
         repo:
-          - "s2-streamstore/docs"
-          - "s2-streamstore/s2"
-          - "s2-streamstore/s2-sdk-typescript"
-          - "s2-streamstore/s2-sdk-go"
-          - "s2-streamstore/s2-sdk-python"
+          - "docs"
+          - "s2"
+          - "s2-sdk-typescript"
+          - "s2-sdk-go"
+          - "s2-sdk-python"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
@@ -23,10 +26,12 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_SECRET_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.repo }}
+          permission-contents: write
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-          repository: ${{ matrix.repo }}
+          repository: ${{ github.repository_owner }}/${{ matrix.repo }}
           event-type: s2-specs-update
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
