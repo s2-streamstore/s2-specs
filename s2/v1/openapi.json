@@ -2436,6 +2436,17 @@
               }
             ]
           },
+          "producer": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Producer",
+                "description": "Tag the batch so that a retry of it is recognized and not appended again."
+              }
+            ]
+          },
           "records": {
             "type": "array",
             "items": {
@@ -3126,6 +3137,32 @@
             "type": "integer",
             "format": "int64",
             "description": "Time the ping was emitted, as Unix epoch milliseconds.",
+            "minimum": 0
+          }
+        }
+      },
+      "Producer": {
+        "type": "object",
+        "description": "Identifies an append batch for deduplicating retries. It is not returned by reads.",
+        "required": [
+          "id",
+          "seq"
+        ],
+        "properties": {
+          "acked": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The writer has received the acknowledgement of every batch with a `seq` below this.",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "Identifier of the writer, chosen by the client."
+          },
+          "seq": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Position of this batch among the writer's batches, increasing by one per batch.",
             "minimum": 0
           }
         }

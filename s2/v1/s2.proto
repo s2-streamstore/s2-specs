@@ -43,6 +43,18 @@ message AppendInput {
   optional uint64 match_seq_num = 2;
   // Enforce a fencing token which must have been previously set by a `fence` command record.
   optional string fencing_token = 3;
+  // Tag the batch so that a retry of it is recognized and not appended again.
+  optional Producer producer = 4;
+}
+
+// Identifies an append batch for deduplicating retries. It is not returned by reads.
+message Producer {
+  // Identifier of the writer, chosen by the client.
+  string id = 1;
+  // Position of this batch among the writer's batches, increasing by one per batch.
+  uint64 seq = 2;
+  // The writer has received the acknowledgement of every batch with a `seq` below this.
+  uint64 acked = 3;
 }
 
 // Success response message to an Append request.
