@@ -2,244 +2,249 @@
 
 **Revision 1.**
 
-What every S2 SDK (Python, TypeScript, Go, Rust) does. Each chapter has a letter and numbered rules. A new revision may renumber them, so cite a rule with its revision: `r1 A5b`.
+What every S2 SDK (Python, TypeScript, Go, Rust) does. It describes where the SDKs are headed, not where each one is today.
 
-Names in this spec are canonical: every SDK uses the same words, in its own casing, and may add a unit suffix where the language has no duration type. Where an SDK splits a call in two (Go's `Submit` then `Wait`, Rust's `reserve` then `submit`), the rule applies to the pair.
+Every rule, and every choice the spec leaves to an SDK, is held to four standards: correctness, elegance, idiom and efficiency.
+
+**Reading the rules.**
+
+- Every statement is a requirement. "May" marks a permission.
+- Each chapter has a letter and numbered rules, cited by id, such as `A7b`. Ids are stable: a later revision never renumbers a rule, and never reuses the id of one it removes. Add the revision, as in `r1 A7b`, when the wording matters.
+- Names are canonical. Every SDK uses the spec's words, in its own casing and naming idiom (see Languages), and may add a unit suffix where the language has no duration type. `name()` is a call; a bare `name` is an accessor, option or setting.
+- Where an SDK splits a call in two (Go's `Submit()` then `Wait()`, Rust's `reserve()` then `submit()`), rules about the call apply to the pair.
 
 | Chapter | Covers |
 |---|---|
 | C | Client |
-| D | Records and inputs |
+| D | Data: records and read inputs |
 | E | Errors |
 | T | Retries, timeouts and cancelling |
-| A | Appending: `append`, `AppendSession`, `Producer` |
-| R | Reading: `read`, `check_tail`, `ReadSession` |
-| M | Managing resources: basins, streams, access tokens |
+| A | Appending: `append()`, `AppendSession`, `Producer` |
+| R | Reading: `read()`, `check_tail()`, `ReadSession` |
+| M | Managing basins, streams and access tokens |
 | F | Forward compatibility |
-| G | Logging |
+| L | Logging |
 
-Terms come first. Three reference sections follow the chapters: Settings, Languages and Conformance.
+Terms come first. Settings, Languages, Conformance and Revisions follow the chapters.
 
 ## Terms
 
 - **Unary call, session.** A unary call is one request and one response. A session is a long-running append or read on one stream, which the SDK keeps going across connections.
+- **Attempt.** One try at an operation, on one connection. A unary call sends its request once per attempt. A session's attempt is one connection, on which it sends its batches, including any an earlier attempt sent that have no outcome yet.
+- **Sent.** A request or batch is sent in an attempt once any of its bytes may have left the SDK during it.
 - **Ack.** The server's confirmation that a batch of appended records is durable.
-- **Attempt.** One try at sending a request or batch, on one connection. An operation may take several attempts.
-- **Sent.** A request or batch is sent once any of its bytes may have left the SDK. If the SDK cannot tell, it counts as sent.
-- **Definite.** An error is definite if the attempt it reports certainly had no side effect. These are definite:
-  - a server error whose code the [error-code table](https://s2.dev/docs/api/error-codes) lists with no side effect, arriving with that code's HTTP status;
+- **Ticket.** What `submit()` returns once it has accepted a record or batch. Awaiting it gives that record's or batch's outcome (A7).
+- **Definite.** An error is definite when the attempt it reports certainly had no side effect. These are definite:
+  - any error from an operation with no side effects, such as a read;
+  - a server error whose code the [error-code table](https://s2.dev/docs/api/error-codes) lists with no side effect (E5);
   - a `412` append condition failure;
-  - a failure before the request or batch was sent, or one the server reports as unprocessed (connect failure, `REFUSED_STREAM`, a stream above an HTTP/2 GOAWAY's `last_stream_id`);
-  - the closed error (E4).
+  - a failure before the request or batch was sent, or one the server reports as unprocessed (a connect failure, `REFUSED_STREAM`, a stream above an HTTP/2 GOAWAY's `last_stream_id`);
+  - `SessionClosedError` (E4).
 
-  Every other error is **indefinite**: the attempt may have taken effect. That includes codes the SDK does not recognize, ack timeouts, failed SDK checks and aborts.
-- **Final error.** The error an operation or a session stopped on: the one that was not retried.
-- **Wrapped.** A definite final error describes only the last attempt. If an earlier attempt of the same append may have taken effect, the SDK reports `AppendIndefiniteFailureError` holding the final error, and that is indefinite. This applies to unary `append()` and to every batch in a session.
-- **Failure.** The error a session ended with.
+  Every other error is **indefinite**: the attempt may have taken effect. That includes codes the SDK does not recognize, ack timeouts, failed SDK checks and aborted appends.
+- **Wrapped.** Held inside `AppendIndefiniteFailureError`, because the error is definite but an earlier attempt may have taken effect (E3).
+- **Final error.** The error an operation or a session stopped on: the last attempt's error, which was not retried.
+- **Closed.** A session is open until it closes, once, for one of the reasons A6 or R6 lists. A closed session takes on no new work; what it already holds finishes as those rules say.
+- **Failure.** What a session reports as the reason it closed: its final error, wrapped as A6 says, or `AbortedError`. A session that closed cleanly has none.
 - **Tail.** The position the server reports as the end of the stream: the sequence number the next record will get, and the timestamp of the last one. The server reports it with records near the end of the stream, and on its own as a **heartbeat** while a read session waits there.
 - **Delivered.** A record is delivered when iteration hands it to the caller. Records the SDK has fetched and is still holding are not delivered.
-- **Skipped.** A command record (a fence or a trim) that the caller asked to ignore. It is never delivered, and it counts as progress everywhere a delivered record does. The session moves past a skipped record as soon as every record before it has been delivered, so skipped records never hold it up.
 
 ## C. Client
 
-1. **Construction.** A client is built from an access token and optional settings. It never reads the environment on its own. A separate, explicit call builds one from `S2_ACCESS_TOKEN`, `S2_ACCOUNT_ENDPOINT` and `S2_BASIN_ENDPOINT`.
-2. **Endpoints** default to `a.s2.dev` for the account and `{basin}.b.s2.dev` for basins, over https. A basin endpoint without the `{basin}` placeholder is direct, and the SDK then names the basin in the `s2-basin` header.
-3. **Defaults** are the same in every SDK. Settings lists them, with their names.
-4. **Compression** is `none`, `gzip` or `zstd`. When it is set, request bodies are compressed and compressed responses are accepted, on unary calls and sessions alike. A session frame is compressed only when its payload is at least 1 KiB.
-5. **Transports.** The SDK chooses which protocol carries a call. Every rule in this spec holds on every transport it offers; transports may differ only in speed.
-6. **Stream settings.** An encryption key is set on the stream handle and sent as `s2-encryption-key` with every append and read. A stream config, used to create the stream on first use, is sent as `s2-stream-config`; a session sends it on every connection.
-7. **Sharing.** A client, and the basin and stream handles made from it, are safe to use from concurrent tasks. Create one client and reuse it.
-8. **Closing.** The client owns the connections; basin and stream handles only refer to it. Where the language needs explicit cleanup, the client has `close()`. Closing a client or a stream handle aborts the sessions opened from it (A7, R6d). A call on a closed client fails at once with a named SDK error (E2).
-9. **User agent** is `s2-sdk-<language>/<version>`.
+1. **Construction.** A client is built from an access token and optional settings, and never reads the environment on its own. `from_env()` builds one from `S2_ACCESS_TOKEN`, `S2_ACCOUNT_ENDPOINT` and `S2_BASIN_ENDPOINT`.
+2. **Endpoints.** The account endpoint defaults to `a.s2.dev`, and the basin endpoint to `{basin}.b.s2.dev`, over https. A basin endpoint without the `{basin}` placeholder serves every basin, so the SDK names the basin in the `s2-basin` header.
+3. **Defaults.** Every setting has the same name and default in every SDK, as Settings lists them.
+4. **Compression.** `compression` is `none`, `gzip` or `zstd`. Unless it is `none`, request bodies are compressed and compressed responses are accepted, on unary calls and sessions alike. A session frame is compressed only when its payload is at least 1 KiB.
+5. **Transports.** An SDK may carry calls over more than one protocol, choosing which itself. Every rule in this spec holds on each transport; transports may differ only in speed.
+6. **Encryption key and stream config.** An encryption key is set on the stream handle, and sent as `s2-encryption-key` with every append and read. A stream config, used to create the stream on first use, is sent as `s2-stream-config`; a session sends it on every connection.
+7. **Sharing.** A client, and the basin and stream handles made from it, are safe to use from concurrent tasks. One client is meant to serve a whole application.
+8. **Closing.** The client owns the connections; basin and stream handles only refer to it. Where the language needs explicit cleanup, the client has `close()`. Closing a client aborts every session opened from it (A9, R6d). A call on a closed client fails at once with `ClientClosedError`.
+9. **User agent.** `s2-sdk-<language>/<version>`, where the language is `python`, `typescript`, `go` or `rust`.
 
-## D. Records and inputs
+## D. Data
 
 1. **Records.** A body is bytes. Headers are an ordered list of name and value pairs, both bytes. An SDK may add string conveniences on top.
 2. **Numbers.** A sequence number is an integer. A timestamp is milliseconds since the Unix epoch, exposed as an integer and not as a date type. A position is a sequence number and a timestamp.
-3. **Read start** is exactly one of `seq_num`, `timestamp` or `tail_offset`, expressed so that two cannot be given at once. With `clamp`, a start beyond the tail reads from the tail. Without it, that read fails (R8b).
-4. **Read stop** combines any of: `count` and `bytes` limits; `until`, a timestamp to stop before; and `wait`, the seconds to wait at the tail for new records.
-5. **Command records.** `fence(token)` and `trim(seq_num)` build them, and `is_command_record` recognizes one that was read. All three are public. `ignore_command_records` is applied by the SDK, which skips them.
-6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. The SDK has a public helper for this, `metered_bytes`, and every byte limit in this spec is in metered bytes.
+3. **Read start.** Exactly one of `seq_num`, `timestamp` or `tail_offset`, in a type that cannot hold two. With `clamp`, a start beyond the tail reads from the tail. Without it, the read fails with a `416` that carries the tail (E1).
+4. **Read stop.** Any of: `count` and `bytes` limits; `until`, a timestamp to stop before; and `wait`, how long to wait at the tail for new records. `wait` defaults to zero, except on a session with no limit and no `until`, which waits at the tail forever.
+5. **Command records.** `fence(token)` and `trim(seq_num)` build them, and `is_command_record()` recognizes one that was read; all three are public. Reads return command records like any other.
+6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. `metered_bytes()` is public, and every byte limit in this spec is in metered bytes.
 
 ## E. Errors
 
-Every error describes the call or record it is attached to.
+Every error's message names the call it came from, and the basin and stream that call was for.
 
-1. **Server errors.** An error the server returned exposes its HTTP status, its code (when the body has one) and its message, exactly as returned. Status and code are the contract; the message is for people and is never parsed. A `412` carries the expected sequence number or fencing token, and a `416` carries the tail, as typed fields.
-2. **SDK errors.** Only errors that came from the server carry a status. Errors the SDK raises are told apart by type:
+1. **Server errors.** A `ServerError` exposes its HTTP status, its code (when the body has one) and its message, exactly as returned. Status and code are the contract; the message is for people and is never parsed. A `412` carries the expected sequence number or fencing token, and a `416` carries the tail, as typed fields.
+2. **SDK errors.** Only a `ServerError` carries a status. The SDK's own errors are told apart by type:
 
-   | Error | Raised when | Definite | Retryable |
+   | Error | When | Definite | Retryable |
    |---|---|---|---|
-   | Validation | input is rejected before anything is sent (A2) | yes | no |
-   | Connect failure | a connection cannot be made, or the connection timeout passes (T5a) | yes | yes |
-   | Connection lost | a connection breaks or is reset | only if nothing was sent, or the server reports the request unprocessed | yes |
-   | Request timeout | T5b | no | yes |
-   | Ack timeout | T5c | no | yes |
-   | Heartbeat timeout | T5d | yes | yes |
-   | Protocol error | a response cannot be decoded, or fails an SDK check | no | no |
-   | Client closed | a call is made on a closed client (C8) | yes | no |
-   | `SessionClosedError` | rule 4 | yes | no |
-   | `Aborted` | a session is aborted (A7, R6d), or a unary call is cancelled (T6) | no | no |
-   | `AppendIndefiniteFailureError` | a definite final error follows an attempt that may have taken effect (see Terms) | no | no |
+   | `ValidationError` | input is rejected before anything is sent (A2) | yes | no |
+   | `ConnectError` | a connection cannot be made, or `connection_timeout` passes (T5a) | yes | yes |
+   | `ConnectionLostError` | a connection breaks or is reset | only if nothing was sent, or the server reports the request unprocessed | yes |
+   | `RequestTimeoutError` | T5b | no | yes |
+   | `AckTimeoutError` | T5c | no | yes |
+   | `HeartbeatTimeoutError` | T5d | yes | yes |
+   | `ProtocolError` | a response cannot be decoded, or fails an SDK check | no | no |
+   | `ClientClosedError` | a call is made on a closed client (C8) | yes | no |
+   | `SessionClosedError` | E4 | yes | no |
+   | `AbortedError` | a session is aborted (A9, R6d), or a unary call is cancelled (T6) | no | no |
+   | `AppendIndefiniteFailureError` | E3 | no | no |
 
-   The three in code font are type names. The others name a kind of error, and each SDK has a type for each. For an operation with no side effects, such as a read, every error is definite.
-3. **Wrappers.** `AppendIndefiniteFailureError` and the closed error are not the error inside them. They do not copy its status or code, and must not match as its type. The inner error stays reachable through a typed accessor (see Languages).
-4. **The closed error** is a dedicated type in each SDK (`SessionClosedError`; an enum variant in Rust), not only an error code. It means "not appended, and never will be", so it is definite. That describes only the session's last attempt, so like any definite outcome it can be wrapped (A5b). Its message includes the failure's message, and the failure, if any, is reachable through a typed accessor.
+   The Definite column is for operations with side effects. For an operation without them, such as a read, every error is definite.
+3. **Wrapping.** A definite final error describes only the last attempt. If an earlier attempt of the same append may have taken effect, the append fails instead with `AppendIndefiniteFailureError` holding the final error, and that is indefinite. This applies to `append()` and to every batch in a session (A7b).
+   - **a.** A wrapper is not the error inside it. `AppendIndefiniteFailureError` and `SessionClosedError` do not copy their inner error's status or code, and do not match as its type.
+   - **b.** The inner error is reachable through a typed accessor: `final_attempt_error` on `AppendIndefiniteFailureError`, and `failure` on `SessionClosedError`. Where the language's cause chain cannot make the wrapper match as the inner type, the inner error is also the wrapper's cause (see Languages).
+4. **`SessionClosedError`.** The session closed without doing what was asked, and never will: an append session will not send the record or batch again, and a read session will not catch up. It is definite. For an append it describes only the last attempt, so like any definite outcome it is wrapped if an earlier attempt may have taken effect (E3). Its message includes the failure's message, and `failure` is empty when the session closed without one.
 5. **Classification.** Every error has two public predicates: `has_no_side_effects`, true when it is definite, and `is_retryable`.
-   - **a.** For a server error, both come from the error-code table. Each SDK's copy of the table is complete and is tested against the published one.
-   - **b.** A code counts only when it arrives with the HTTP status the table lists for it. With any other status, the error is indefinite and not retryable.
-   - **c.** A code the SDK does not recognize is indefinite, and retryable by status alone: `408`, `429`, `500`, `502`, `503`, `504`.
-   - **d.** For an SDK error, both come from the table in rule 2.
+   - **a.** For a `ServerError`, both come from the error-code table. Each SDK's copy of the table is complete and is tested against the published one.
+   - **b.** A code counts only when it arrives with the HTTP status the table lists for it. Otherwise the error is treated as having no code.
+   - **c.** A `ServerError` with no code, or with a code the SDK does not recognize, is indefinite, and retryable by status alone: `408`, `429`, `500`, `502`, `503`, `504`.
+   - **d.** For an SDK error, both come from the table in E2.
 
 ## T. Retries, timeouts and cancelling
 
-1. **What is retried.** An attempt is retried when its error is retryable (E5), repeating it is safe (rule 2) and the budget allows (rule 3). A unary call returns its result or, once no retry is left, raises its final error. An authentication failure is not retried, unless the SDK was given a way to refresh its token.
+1. **What is retried.** An attempt is retried when its error is retryable (E5), repeating it is safe (T2) and the budget allows (T3). Otherwise that error is the final error: a unary call fails with it, and a session closes as A6 and R8 say. An authentication failure is never retried.
 2. **Safe to repeat.**
-   - **a.** Reads, and operations that set a state (ensure, reconfigure, delete), retry any retryable error.
-   - **b.** Creating a basin or a stream carries a request token in `s2-request-token`, made once per call and reused on every attempt, so it also retries any retryable error.
-   - **c.** Appends follow the append retry policy. `all` retries any retryable error. `no_side_effects` retries only when no unacked batch may have taken effect: the error is definite, or nothing unacked was sent.
-   - **d.** Any other operation that is not idempotent, such as issuing an access token, retries only definite errors.
-3. **Budget and backoff.** `max_attempts` counts the first try. The delay before retry *n*, counting from 0, is `base + random(0, base)`, where `base = min(min_base_delay × 2ⁿ, max_base_delay)`. On a unary call, a `retry-after-ms` response header raises the delay to at least that value.
+   - **a.** Reads, and calls that set a state (ensure, reconfigure, delete), are always safe to repeat.
+   - **b.** Creating a basin or a stream carries a request token in `s2-request-token`, made once per call and reused on every attempt, so it is always safe to repeat too.
+   - **c.** An append is safe to repeat as `append_retry_policy` says. Under `all`, it always is. Under `no_side_effects`, it is safe only when no unacked batch may have taken effect: the error is definite, or nothing unacked was sent.
+   - **d.** Any other call that is not idempotent, such as issuing an access token, is safe to repeat only after a definite error.
+3. **Budget and backoff.** The budget is `max_attempts`, counting the first. The delay before retry *n*, counting from 0, is `base + random(0, base)`, where `base = min(min_base_delay × 2ⁿ, max_base_delay)`. On a unary call, a `retry-after-ms` response header raises the delay to at least that value.
 4. **Sessions.**
-   - **a.** Progress restores the whole budget. Progress is an ack on an append session, and any batch from the server on a read session, heartbeats included.
-   - **b.** A read session's retry policy is budgeted or indefinite. An indefinite session never gives up on a retryable error: once the budget is spent, it waits `max_base_delay`, with jitter, before each further try.
-   - **c.** A planned handover uses no budget. On `server_draining`, or when the server advises a reconnect, a session reconnects at once, without waiting. It acts on advice at most once every 60 s. On a unary call, `server_draining` is an ordinary retryable error.
-5. **Timeouts.** Each is a named SDK error (E2). The request timeout applies to each attempt, not to a call as a whole.
-   - **a. Connection timeout:** establishing a connection, TLS included.
-   - **b. Request timeout:** a unary call, from sending the request to receiving the whole response. A unary read with `wait` gets the request timeout plus `wait`. For a session it bounds only the wait for the response to begin.
-   - **c. Ack timeout:** on an append session, a batch not acked within the request timeout after being sent.
-   - **d. Heartbeat timeout:** on a read session, a connection that delivers nothing for 20 s, not even a heartbeat.
-6. **Cancelling** a unary call stops it at once, including while it waits to retry. It is not retried. How a call is cancelled, and what the caller then sees, depends on the language (see Languages). A cancelled `append` may have taken effect.
+   - **a. Restoring the budget.** Each ack on an append session, and each batch on a read session, heartbeats included, restores the whole budget.
+   - **b. Read retry policy.** A read session's `retry_policy` is `budgeted` or `unbounded`. An `unbounded` session ignores `max_attempts`: it retries every retryable error, with the backoff of T3.
+   - **c. Handover.** A planned handover uses no budget and no backoff. On reconnect advice, a read session reconnects at once; an append session stops sending on the advised connection, and sends on a new one once the old one has acked everything sent on it ([s2s](../s2/v1/s2s.md)). On `server_draining`, a session reconnects at once, and an append session resends every batch the old connection did not ack, none of which took effect. A session acts on advice at most once every 60 s. On a unary call, `server_draining` is an ordinary retryable error.
+5. **Timeouts.** A timeout fails the attempt with the error E2 lists for it. Each applies to one attempt, not to a call as a whole.
+   - **a. Connection.** `connection_timeout` bounds establishing a connection, TLS included.
+   - **b. Request.** `request_timeout` bounds a unary call's attempt, from sending the request to receiving the whole response. A unary read with `wait` gets `request_timeout` plus `wait`. On a session, `request_timeout` bounds only the wait for the response to begin.
+   - **c. Ack.** On an append session, a batch not acked within `request_timeout` of being sent.
+   - **d. Heartbeat.** On a read session, a connection that receives nothing for 20 s, not even a heartbeat.
+6. **Cancelling.** Cancelling a unary call stops it at once, including while it waits to retry, and it is not retried. How a call is cancelled, and what the caller then sees, depends on the language (see Languages). A cancelled `append()` may have taken effect.
 
 ## A. Appending
 
-`append`, and the sessions built on it: `AppendSession` and `Producer`. Rules 3 to 8 are about sessions.
+`append()`, and two ways to append continuously: `AppendSession`, which takes batches, and `Producer`, which takes records, batches them, and owns an `AppendSession` (A9c). Rules A3 to A9 cover both, called sessions in this chapter; where they differ, the rule names one.
 
-1. **`append`** sends one batch and returns its ack.
-   - **a.** The batch is validated first (rule 2). An invalid batch is not sent.
-   - **b.** An ack holds three positions: `start`, the first record appended; `end`, one past the last record appended; and `tail`, the stream's tail, which is past `end` when others appended at the same time. A session returns the same ack for each batch.
-   - **c.** Retries follow the append retry policy (T2c). A definite final error is wrapped when an earlier attempt may have taken effect (see Terms).
-2. **Validation.** `append` and `submit()` reject an invalid record or batch first: before sending, and before waiting for capacity. That includes one over the batch limits (1000 records, 1 MiB). Nothing is accepted and nothing closes.
-3. **Acceptance.** `submit()` waits until there is capacity for the record or batch, and only then accepts it.
-   - **a.** Capacity is granted first come, first served. An accepted record counts against it until its batch has an outcome, including while it is still being batched.
-   - **b.** Records are ordered by acceptance, and batches never exceed their limits.
-   - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing, and one still waiting when the session closes raises the closed error.
+1. **Unary append.** `append()` sends one batch and returns its ack, retrying as `append_retry_policy` says (T2c). An ack holds three positions: `start`, the first record appended; `end`, one past the last record appended; and `tail`, the stream's tail, which is past `end` when others appended at the same time. A session acks each batch with the same three positions.
+2. **Validation.** `append()` and `submit()` reject an invalid record or batch before anything else: before sending, and before waiting for capacity. A batch over the limits (1000 records, 1 MiB) is invalid. A rejected call accepts nothing, and the session stays open.
+3. **Opening.** A session is opened from a stream handle, with its options.
+   - **a.** An `AppendSession`'s options are `max_unacked_bytes` and `max_unacked_batches`.
+   - **b.** A `Producer`'s options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It opens the `AppendSession` it owns.
+4. **Acceptance.** `submit()` waits until there is capacity for the record or batch, then accepts it and returns a ticket.
+   - **a.** Capacity is `max_unacked_bytes` and, on an `AppendSession`, `max_unacked_batches`. An accepted record counts against it until its batch has an outcome, including while a Producer is still batching it. Capacity is granted first come, first served.
+   - **b.** Records are ordered by acceptance.
+   - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing. One still waiting when the session closes fails with `SessionClosedError`.
    - **d.** Every method is safe to call from concurrent tasks.
-4. **One failure, then closed.** A session's failure is its final error, wrapped if it is definite and any batch's outcome was wrapped. A Producer's failure is its session's failure, or `Aborted` (rule 7). The session is closed from `close()`, an abort or the failure onward.
-5. **One outcome per batch, shared by its records.** A batch is atomic, so each record gets its batch's outcome. An outcome never changes; where a ticket can be awaited more than once, every await gives the same result.
+5. **Batching.** A Producer sends a batch when it is full, or when `linger` has passed since its first record was accepted, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. `match_seq_num` goes on the first batch, and rises by each batch's record count.
+6. **One failure, then closed.** A session closes at the first of `close()`, an abort, and its failure. Its failure is its final error, wrapped if it is definite and any batch's outcome was wrapped, or `AbortedError` (A9). A Producer's failure is that of the session it owns, or `AbortedError`.
+7. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
    - **a.** If the final error came from the server, it belongs to the oldest unacked batch, provided that batch was sent: that batch was **rejected**. Each batch gets the first row that fits:
 
      | Batch | Outcome |
      |---|---|
      | Acked | the ack |
      | Rejected | the final error |
-     | Behind a batch rejected with a definite error | the closed error |
-     | Never sent, in any attempt | the closed error |
+     | Behind a batch rejected with a definite error | `SessionClosedError` |
+     | Never sent, in any attempt | `SessionClosedError` |
      | Any other | the final error |
 
-   - **b.** A definite outcome is then wrapped if an earlier attempt of that batch may have taken effect.
-   - **c.** The closed error behind a definite rejection relies on the server: after it rejects a batch with a definite error, no later batch in the session becomes durable. A transport without a server-side session (such as TypeScript's fetch transport) must give the same guarantee itself: one batch in flight at a time, and nothing sent after a failure.
+   - **b.** A definite outcome is then wrapped if an earlier attempt that sent the batch may have taken effect (E3).
+   - **c.** `SessionClosedError` behind a definite rejection relies on the server: once it rejects a batch with a definite error, no later batch in the session becomes durable. A transport without a server-side session (such as TypeScript's fetch transport) gives the same guarantee itself: one batch in flight at a time, and nothing sent after a failure.
    - **d.** A Producer never overrides an outcome its session reported.
-6. **Calls.**
-   - **a.** `submit()` once closed, for any reason: the closed error. Only `submit()` and tickets ever produce it.
-   - **b.** `flush()` (Producer only): sends any partial batch at once, then returns once every record accepted before it is acked. Otherwise it raises the failure. A failure that affects only later records does not fail it. Neither does the Producer being closed. A `submit()` that returned before `flush()` began is covered; concurrent ones may fall on either side.
-   - **c.** `close()`: stops accepting, sends any partial batch, waits until everything accepted has an outcome, then returns nothing or raises the failure. Every call gives the same result.
-7. **Abort** ends the session at once with a named, indefinite `Aborted` failure, and rules 4 to 6 then apply. With no batch awaiting an outcome, an abort is a clean close, with no failure. Cancelling any other call only stops that call's wait.
-   - **a.** What aborts a session, and what only closes it, depends on the language (see Languages).
-   - **b. The reason:** `Aborted` carries what triggered it as its cause, where the language has one.
-   - **c. Ownership:** a Producer owns its session, so closing or aborting the Producer does the same to the session. A session belongs to at most one Producer and is used only through it; if the caller closes it anyway, the Producer aborts.
-8. **Construction.** A session or a Producer is opened from a stream handle, with one set of options.
-   - **a.** A Producer's options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It creates the session it owns.
-   - **b.** The fencing token goes on every batch. `match_seq_num` goes on the first batch and rises by each batch's record count.
-   - **c.** A batch is sent when it is full or when the linger expires, whichever comes first.
+8. **Calls.**
+   - **a. `submit()`.** On a session closed for any reason, it fails with `SessionClosedError`. `flush()` and `close()` never fail with it.
+   - **b. `flush()`.** Producer only. Sends any partial batch at once, then returns once every record accepted before it is acked. Otherwise it fails with the failure. A failure that affects only later records does not fail it, and neither does the Producer being closed. A `submit()` that returned before `flush()` began is covered; concurrent ones may fall on either side.
+   - **c. `close()`.** Stops accepting, sends any partial batch, and waits until everything accepted has an outcome. Then it returns, or fails with the failure. Every call to it gives the same result.
+9. **Abort.** An abort closes the session at once, with an indefinite `AbortedError` failure, and A6 to A8 then apply. With no batch awaiting an outcome, an abort is a clean close, with no failure.
+   - **a. Triggers.** Closing the client aborts a session (C8). What else aborts one, and what only closes it, depends on the language (see Languages). Cancelling any other call only stops that call's wait.
+   - **b. Cause.** `AbortedError` carries what triggered the abort as its cause, in languages where errors have causes.
+   - **c. Ownership.** A Producer owns its session: closing or aborting the Producer closes or aborts the session.
 
-**Example.** A session accepted batches A, B and C, in that order. A and B were sent; C was not. "closed" is the closed error, and `Indefinite(x)` is `AppendIndefiniteFailureError` holding `x`.
+**Example.** A session accepted batches A, B and C, in that order. A and B were sent; C was not. In each row, the last error is final: it was not retried. "closed" is `SessionClosedError`, and `Indefinite(x)` is `AppendIndefiniteFailureError` holding `x`.
 
 | What happened | A | B | C | `close()` |
 |---|---|---|---|---|
 | Server rejects A with `412` | `412` | closed | closed | `412` |
 | Server fails A with `storage` (indefinite) | `storage` | `storage` | closed | `storage` |
-| Connection lost, not retried | connection error | connection error | closed | connection error |
-| Connection lost; A and B resent; server rejects A with `412` | `Indefinite(412)` | `Indefinite(closed)` | closed | `Indefinite(412)` |
+| Connection lost | `ConnectionLostError` | `ConnectionLostError` | closed | `ConnectionLostError` |
+| Connection lost and retried; A and B resent; server rejects A with `412` | `Indefinite(412)` | `Indefinite(closed)` | closed | `Indefinite(412)` |
 
 ## R. Reading
 
-`read`, `check_tail` and `ReadSession`. Rules 3 to 8 are about the session, whose state describes what the caller has been given, not what the SDK has fetched.
+`read()`, `check_tail()` and `ReadSession`. Rules R3 to R8 cover the session. Its `next_seq_num` describes what the caller has been given, not what the SDK has fetched; `last_observed_tail` and `is_caught_up` describe what the server has reported.
 
-1. **`read`** returns one batch: its records, the tail when the read is near the end of the stream, and `next_seq_num`.
-   - **a.** `next_seq_num` is where to read next: one past the last record the server returned, skipped records included. It is unknown only when the server returned no records and no tail.
-   - **b.** A batch can be empty, for example when every record in it was skipped. An empty batch does not mean the end of the stream; `next_seq_num` and the tail say where the caller is.
-   - **c.** With `wait`, a read at the tail waits up to that long for new records.
-2. **`check_tail`** returns the tail, as a position.
-3. **Iteration yields records**, one at a time, in sequence-number order, each exactly once.
-   - **a.** Batches are how the server ships records, and they carry no meaning. An SDK may also offer a batch view; it delivers a batch as a whole, and every rule here applies to it unchanged.
-   - **b.** The session fetches ahead by a bounded amount and no further until the caller takes records.
-   - **c.** Iteration has one consumer. The accessors in rule 4 are safe to call from anywhere, at any time, and never block.
-4. **State.** Three accessors, each updated before the record that changed it is handed over.
-   - **a. `next_seq_num`:** the sequence number of the next record the session will deliver or skip. Every record still on the stream between the start and it was delivered or skipped, and none at or after it was. Records already removed by trimming or retention are absent, so sequence numbers can jump. It is known at once for an absolute start that is not clamped; otherwise it is unknown until the first record is delivered or the first tail arrives. It is what a caller checkpoints, and where a new session should start.
-   - **b. `last_observed_tail`:** the latest tail the server reported, whether or not the session has delivered up to it. It never moves backward and survives reconnects. `last_observed_tail.seq_num - next_seq_num` is a lower bound on how far behind the caller is.
-   - **c. `is_caught_up`:** true when the last thing the server reported is a tail equal to `next_seq_num`: everything up to a reported tail has been delivered or skipped, and nothing newer is known. It turns false when a record beyond that tail is fetched, when records arrive without a tail, and when the connection is lost, until the server reports again.
-5. **`caught_up()`** returns an awaitable for the current caught-up state, or the next one if the session is behind.
-   - **a.** It resolves with the tail the session caught up to. Once resolved, its value never changes.
-   - **b.** It does not read. The caller keeps iterating while it is pending.
+1. **Unary read.** `read()` returns one batch as the server sent it: its records, and the tail if the server reported one.
+   - **a.** A batch has no records only when a stop condition was met before any record, such as `wait` running out at the tail. It does not mean the end of the stream.
+   - **b.** The next read starts one past the last record returned or, if there was none, where this one started.
+2. **Tail.** `check_tail()` returns the tail.
+3. **Iteration.** Iterating a session yields records, one at a time, in sequence-number order, each delivered once.
+   - **a.** Batches are how the server ships records, and carry no meaning. An SDK may also offer a batch view; it delivers each batch whole, and every rule here applies to it per batch.
+   - **b.** The session fetches ahead by a bounded amount, and no further until the caller takes records.
+   - **c.** Iteration has one consumer. The accessors in R4 are safe to call from anywhere, at any time, and never block.
+4. **State.** Three accessors, none behind iteration: each reflects a record before that record is delivered.
+   - **a. `next_seq_num`.** One past the last record delivered, or the start before any is. A `seq_num` start that is not clamped is known at once; any other start is resolved by the first response, to its first record's sequence number or else its tail (R7b), and until then `next_seq_num` is unknown. Records removed by trimming or retention are absent, so it can jump. It is what a caller checkpoints to resume from.
+   - **b. `last_observed_tail`.** The latest tail the server has reported, whether or not the session has delivered up to it. It never moves backward, and survives reconnects. `last_observed_tail.seq_num - next_seq_num` is a lower bound on how far behind the caller is.
+   - **c. `is_caught_up`.** True when the last thing the server reported is a tail equal to `next_seq_num`: everything up to a reported tail has been delivered, and nothing newer is known. It turns false when a record beyond that tail is fetched, when records arrive without a tail, and when the connection is lost, until the server reports again.
+5. **Catching up.** `caught_up()` returns a future that resolves once the session is caught up: at once if it is now, or else the next time it is.
+   - **a.** It resolves with the tail the session caught up to, and its value never changes.
+   - **b.** It does not read: the caller keeps iterating while it is pending.
    - **c.** It stays pending across reconnects.
-   - **d.** If the session ends before catching up, it raises the failure, or the closed error (E4) when there is none.
-6. **Ending.**
-   - **a. Cleanly:** a stop condition was met (`count`, `bytes`, `until`, or `wait` ran out). Iteration finishes with no error.
-   - **b. By the caller:** the consumer closes the session (see Languages). Iteration finishes with no error. Cancelling a wait for the next record only stops that wait: nothing is lost and the session stays open.
-   - **c. With a failure:** every record already fetched is delivered first, then iteration raises the failure once.
-   - **d. By an abort,** where the language has one (see Languages). It stops a session from outside the code that iterates it. Records fetched but not delivered are dropped, and iteration raises `Aborted` (A7b).
-   - **e.** After the end, `next_seq_num` and `last_observed_tail` keep their last values. `is_caught_up` keeps its last value on a clean or caller end, and is false after a failure.
-7. **Reconnects are invisible to iteration.** T4 decides whether one happens.
+   - **d.** If the session closes before catching up, it fails with the failure, or with `SessionClosedError` when there is none.
+6. **Closing.** A read session closes for one of four reasons.
+   - **a. A stop condition.** `count`, `bytes` or `until` was reached, or `wait` ran out. Iteration finishes with no error.
+   - **b. The caller.** The consumer closes the session (see Languages). Iteration finishes with no error. Cancelling a wait for the next record only stops that wait: nothing is lost, and the session stays open.
+   - **c. A failure.** Every record already fetched is delivered first; then iteration fails with the failure, once.
+   - **d. An abort.** Something outside the code that iterates the session aborts it: closing the client (C8), or the session's own abort where the language has one (see Languages). Records fetched but not delivered are dropped, and iteration fails with `AbortedError` (A9b).
+   - **e.** After closing, `next_seq_num` and `last_observed_tail` keep their last values. `is_caught_up` keeps its last value after a stop condition or the caller, and is false after a failure or an abort.
+7. **Reconnects.** They are invisible to iteration. T4 decides whether one happens.
    - **a.** The session resumes at the first record it has not fetched, so nothing is repeated and nothing is missed.
    - **b.** A start given by timestamp or tail offset is resolved once. After the first response the session resumes by sequence number, never by re-evaluating the original start.
-   - **c.** `count`, `bytes` and `wait` cover the whole session, not each connection. Skipped records count against the limits, as they do on the server, and a reconnect asks only for the `wait` not yet spent at the tail.
-8. **Errors.**
-   - **a.** The failure is the session's final error, or `Aborted` (6d). A read has no side effects, so nothing is ever wrapped.
-   - **b.** Reading from beyond the tail is a typed error that carries the tail (E1).
+   - **c.** `count`, `bytes` and `wait` cover the whole session, not each connection. A reconnect asks only for the `wait` not yet spent at the tail.
+8. **Failure.** A read session's failure is its final error, or `AbortedError` (R6d). A read has no side effects, so nothing is wrapped.
 
-**Example.** A stream holds records 0–4, so its tail is 5. The session starts at 0, and record 2 is a skipped command record.
+**Example.** A stream holds records 0–4, so its tail is 5. A session starts at 0.
 
 | Step | `next_seq_num` | `last_observed_tail` | `is_caught_up` |
 |---|---|---|---|
 | Opened, nothing fetched | 0 | unknown | false |
 | Records 0–4 fetched with tail 5; record 0 delivered | 1 | 5 | false |
-| Record 1 delivered | 3 | 5 | false |
-| Records 3 and 4 delivered | 5 | 5 | true |
+| Records 1–4 delivered | 5 | 5 | true |
 | Heartbeat with tail 5 | 5 | 5 | true |
-| Record 5 fetched with tail 6, not yet delivered | 5 | 6 | false |
-| Connection lost, then restored; heartbeat with tail 6 after record 5 is delivered | 6 | 6 | true |
+| Another writer appends record 5; it is fetched with tail 6 | 5 | 6 | false |
+| Record 5 delivered | 6 | 6 | true |
+| Connection lost | 6 | 6 | false |
+| Reconnected; heartbeat with tail 6 | 6 | 6 | true |
 
-## M. Managing resources
+## M. Managing basins, streams and access tokens
 
-Basins, streams and access tokens. Every call here is unary.
+Every call here is unary. Each is named for its verb and resource: `create_basin()`, `ensure_basin()`, `reconfigure_basin()`, `delete_basin()`, `list_basins()` and `list_all_basins()`, the same for streams, and `issue_access_token()`, `revoke_access_token()`, `list_access_tokens()` and `list_all_access_tokens()`. An SDK that groups calls by resource may leave the resource out of the name (Go's `Basins.Ensure()`). A call this chapter does not cover, such as `get_basin_config()`, is an ordinary unary call, retried as T2 says.
 
-1. **Create** makes a new resource, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
-2. **Ensure** creates the resource if it is missing, and otherwise applies the given config. It returns the resource and which of three things happened: created, updated, or unchanged.
-3. **Reconfigure** changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
-4. **Delete** starts deletion. The resource is then listed as being deleted until it is gone (rule 8).
+1. **Create.** Creating a basin or stream makes a new one, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
+2. **Ensure.** Ensuring a basin or stream creates it if it is missing, and otherwise applies the given config. It returns the resource and what happened: `created`, `config_updated` or `config_unchanged`.
+3. **Reconfigure.** Reconfiguring changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
+4. **Delete.** Deleting a basin or stream starts its deletion. Until deletion finishes, the resource is being deleted (M8).
    - **a.** Deleting a resource that does not exist is an error, unless the caller passes `ignore_not_found`.
-   - **b.** On a retry, after an attempt that may have taken effect, "not found" means the delete worked, and the call succeeds.
-5. **Issuing an access token** returns the token once. The SDK does not keep it or log it (G4), and retries only definite errors (T2d).
-6. **`list`** makes one call and returns one page: the items, and whether more remain. It takes `prefix`, `start_after` and `limit`.
-7. **`list_all`** iterates every match lazily, fetching the next page only when the caller reaches it. It takes `prefix` and `start_after`. Each page is a unary call with its own retries, and a page that fails ends the iteration with that error.
-8. **Deleted resources.** `list_all` leaves out basins and streams that are being deleted, unless `include_deleted` is set.
+   - **b.** On a retry, after an attempt that may have taken effect, "not found" means the earlier attempt worked, and the call succeeds.
+5. **Issuing an access token.** The server reveals the token only in this response. The SDK does not keep it or log it (L3), and retries only definite errors (T2d).
+6. **Listing a page.** `list_basins()`, `list_streams()` and `list_access_tokens()` each make one call, and return one page as the server sent it: the items, and `has_more`, which says whether more remain. Each takes `prefix`, `start_after` and `limit`.
+7. **Listing all.** `list_all_basins()`, `list_all_streams()` and `list_all_access_tokens()` iterate every match lazily, fetching the next page only when the caller reaches it. Each takes `prefix` and `start_after`. Each page is a unary call with its own retries, and a page that fails ends the iteration with that error.
+8. **Resources being deleted.** A page from M6 includes basins and streams that are being deleted, each marked as such. Iteration under M7 leaves them out, unless `include_deleted` is set.
 
 ## F. Forward compatibility
 
 A released SDK keeps working against a newer server.
 
 1. **Parsing.** A response never fails to parse because of a field or value this SDK version does not know.
-2. **Unknown values** in a field the server may extend are exposed by their wire name, in the language's idiom: an `Unknown` variant, or an open string type. The type must allow for it: a closed type that can hold an unlisted value at run time is a bug.
-3. **Client-only enums**, which are only ever sent, stay closed.
-4. **Unknown error codes** follow E5c.
+2. **Open enums.** Every enum the server sends is open: a value this SDK version does not know is exposed by its wire name, in the language's idiom (an `Unknown` variant, or an open string type). A closed type that can hold an unlisted value at run time is a bug.
+3. **Closed enums.** Every enum only the SDK sends is closed.
+4. **Error codes.** An error code the SDK does not know follows E5c.
 
-## G. Logging
+## L. Logging
 
-1. **Off by default.** The SDK logs through the language's usual facility and emits nothing unless the application turns it on.
-2. **Levels.** Nothing on a healthy path is logged above debug. Requests, batches and records are debug or finer, and so are retries and reconnects.
-3. **Errors are returned, not logged.** A failure goes to the caller. The SDK does not also log it above debug.
-4. **Secrets.** Record bodies, access tokens and encryption keys are never logged. Tokens and keys are also masked when a client or its settings are printed.
+1. **Off by default.** The SDK logs through the language's usual facility, and emits nothing unless the application turns it on.
+2. **Debug or finer.** Everything the SDK logs, retries, reconnects and failures included, is at debug level or finer. A failure reaches the application as an error, not as a log line.
+3. **Secrets.** Record bodies, access tokens and encryption keys are never logged. Tokens and keys are also masked when a client, a handle or their settings are printed.
 
 ## Settings
 
@@ -249,15 +254,15 @@ Names and defaults, the same in every SDK (C3).
 |---|---|---|
 | `connection_timeout` | client | 3 s |
 | `request_timeout` | client | 5 s |
-| `max_attempts` | client | 3, counting the first |
+| `max_attempts` | client | 3 |
 | `min_base_delay`, `max_base_delay` | client | 100 ms, 1 s |
 | `append_retry_policy` | client | `all` |
 | `compression` | client | `none` |
 | `retry_policy` | read session | `budgeted` |
-| `max_unacked_bytes` | append session, Producer | 5 MiB (minimum 1 MiB) |
-| `max_unacked_batches` | append session | none |
-| `linger` | Producer | 5 ms |
-| `max_batch_records`, `max_batch_bytes` | Producer | 1000 records, 1 MiB |
+| `max_unacked_bytes` | `AppendSession`, `Producer` | 5 MiB (minimum 1 MiB) |
+| `max_unacked_batches` | `AppendSession` | none |
+| `linger` | `Producer` | 5 ms |
+| `max_batch_records`, `max_batch_bytes` | `Producer` | 1000 records, 1 MiB |
 
 ## Languages
 
@@ -265,26 +270,27 @@ Where a rule depends on the language, this is what it means in each.
 
 | | Python | TypeScript | Go | Rust |
 |---|---|---|---|---|
-| Abort an append session or Producer (A7) | cancel `close()`, or leave `async with` on a `BaseException` that is not an `Exception` (a cancellation, `KeyboardInterrupt`, `GeneratorExit`) | the session's abort signal | cancel the constructor's context | drop it, including an unfinished `close()` |
-| Close one (A6c) | `close()`, or leave `async with` any other way | `close()`, or `await using` | `Close()` | `close()` |
-| End a read session (R6b) | `close()`, or leave `async with` | cancel the stream, or `await using` | `Close()` | drop it |
-| Abort a read session (R6d) | none | the session's abort signal | cancel the constructor's context | none |
+| An error the spec names `XError` (E2) | class `XError` | class `XError` | type `*XError`, matched with `errors.As` | variant `X` of the call's error enum |
+| Abort an append session or Producer (A9a) | cancel `close()`, or leave `async with` on a `BaseException` that is not an `Exception` (a cancellation, `KeyboardInterrupt`, `GeneratorExit`) | the session's abort signal | cancel the constructor's context | drop it, including an unfinished `close()` |
+| Close an append session or Producer (A8c) | `close()`, or leave `async with` any other way | `close()`, or `await using` | `Close()` | `close()` |
+| Close a read session (R6b) | `close()`, or leave `async with` | `cancel()` it (it is a `ReadableStream`), or `await using` | `Close()` | drop it |
+| Abort a read session, besides closing the client (R6d) | none | the session's abort signal | cancel the constructor's context | none |
 | Cancel a unary call (T6) | cancel the task | the call's abort signal | cancel the call's context | drop the future |
-| What a cancelled unary call reports (T6) | the task's cancellation | `Aborted` | `Aborted` | nothing: the future is gone |
-| The cause `Aborted` carries (A7b) | the exception | `signal.reason` | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds | none |
-| A wrapper's inner error (E3) | `__cause__` | `cause` | a typed accessor only, kept out of the `Unwrap` chain | `source()` |
+| What a cancelled unary call reports (T6) | the task's cancellation | `AbortedError` | `AbortedError` | nothing: the future is gone |
+| The cause `AbortedError` carries (A9b) | the exception | `signal.reason` | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds | none |
+| A wrapper's cause, besides its typed accessor (E3b) | `__cause__` | `cause` | none: the inner error is kept out of the `Unwrap` chain | `source()` |
 
-A wrapper may expose its inner error through `__cause__`, `cause` or `source()` because `except`, `instanceof` and `match` do not follow them. Go's `errors.Is` and `errors.As` do follow `Unwrap`, so a Go wrapper must not unwrap to it.
+A wrapper's inner error can be its cause in Python, TypeScript and Rust because `except`, `instanceof` and `match` do not follow causes. Go's `errors.Is` and `errors.As` do follow `Unwrap`, so a Go wrapper does not unwrap to its inner error.
 
-**TypeScript stream adapters** (`readable`/`writable`): a write is a `submit()`, and closing the `writable` is `close()`. Erroring or cancelling either one aborts; leaving a `for await` over `readable` early cancels it. On failure, `readable` errors with the failure.
+**TypeScript stream adapters.** An `AppendSession` or `Producer` also offers `writable`, which takes what `submit()` takes, and `readable`, which yields acks. A write is a `submit()`, and closing `writable` is `close()`. Aborting `writable`, or cancelling `readable` (as leaving a `for await` over it early does), aborts the session. On failure, `readable` errors with the failure.
 
 ## Conformance
 
 An SDK conforms to a revision when it follows every rule in it. To make that checkable:
 
-- Every testable rule has a test in each SDK, tagged with its rule id, such as `A5b`.
+- Every testable rule has a test in each SDK, tagged with its id, such as `A7b`.
 - A rule without a tagged test counts as not yet met.
-- When a revision changes a rule, the Revisions section names it, so each SDK knows which tests to revisit.
+- When a revision changes a rule, the Revisions section names it, so each SDK knows which tests to revisit. Ids are stable, so a tag never needs renaming.
 
 ## Revisions
 
