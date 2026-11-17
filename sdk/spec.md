@@ -69,7 +69,7 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
 5. **Transports.** The SDK chooses which protocol carries a call. Every rule in this spec holds on every transport it offers; transports may differ only in speed.
 6. **Stream settings.** An encryption key is set on the stream handle and sent as `s2-encryption-key` with every append and read. A stream config, used to create the stream on first use, is sent as `s2-stream-config`; a session sends it on every connection.
 7. **Sharing.** A client, and the basin and stream handles made from it, are safe to use from concurrent tasks. Create one client and reuse it.
-8. **Closing.** The client owns the connections; basin and stream handles only refer to it. Where the language needs explicit cleanup, the client has `close()`. Closing a client or a stream handle aborts the sessions opened from it (A6, R4d).
+8. **Closing.** The client owns the connections; basin and stream handles only refer to it. Where the language needs explicit cleanup, the client has `close()`. Closing a client or a stream handle aborts the sessions opened from it (A6, R4d). A call on a closed client fails at once with a named SDK error, which is definite and is not retried.
 9. **User agent** is `s2-sdk-<language>/<version>`.
 
 ## E. Errors
