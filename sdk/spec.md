@@ -4,11 +4,6 @@
 
 What every S2 SDK (Python, TypeScript, Go, Rust) does. Each chapter has a letter and numbered rules. A new revision may renumber them, so cite a rule with its revision: `r1 A4b`.
 
-Two principles:
-
-- **Every error describes the call or record it is attached to.**
-- **A session's state describes what the caller has been given, not what the SDK has fetched.**
-
 Names in this spec are canonical: every SDK uses the same words, in its own casing, and may add a unit suffix where the language has no duration type. Where an SDK splits a call in two (Go's `Submit` then `Wait`, Rust's `reserve` then `submit`), the rule applies to the pair.
 
 | Chapter | Covers |
@@ -73,6 +68,8 @@ Names in this spec are canonical: every SDK uses the same words, in its own casi
 9. **User agent** is `s2-sdk-<language>/<version>`.
 
 ## E. Errors
+
+Every error describes the call or record it is attached to.
 
 1. **Server errors.** An error the server returned exposes its HTTP status, its code (when the body has one) and its message, exactly as returned. Status and code are the contract; the message is for people and is never parsed. A `412` carries the expected sequence number or fencing token, and a `416` carries the tail, as typed fields.
 2. **SDK errors.** Only errors that came from the server carry a status. Errors the SDK raises (validation, timeouts, transport failures, the closed error, `Aborted`) are told apart by type.
@@ -171,7 +168,7 @@ Names in this spec are canonical: every SDK uses the same words, in its own casi
 
 ## R. Reading
 
-`ReadSession`.
+`ReadSession`. Its state describes what the caller has been given, not what the SDK has fetched.
 
 1. **Iteration yields records**, one at a time, in sequence-number order, each exactly once.
    - **a.** Batches are how the server ships records, and they carry no meaning. An SDK may also offer a batch view; it delivers a batch as a whole, and every rule here applies to it unchanged.
