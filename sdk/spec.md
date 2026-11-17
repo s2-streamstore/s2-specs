@@ -9,7 +9,7 @@ Two principles:
 - **Every error describes the call or record it is attached to.**
 - **A session's state describes what the caller has been given, not what the SDK has fetched.**
 
-Method names are generic: each SDK uses its own casing and idioms. Where an SDK splits a call in two (Go's `Submit` then `Wait`, Rust's `reserve` then `submit`), the rule applies to the pair.
+Names in this spec are canonical: every SDK uses the same words, in its own casing, and may add a unit suffix where the language has no duration type. Where an SDK splits a call in two (Go's `Submit` then `Wait`, Rust's `reserve` then `submit`), the rule applies to the pair.
 
 | Chapter | Covers |
 |---|---|
@@ -51,19 +51,19 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
 2. **Endpoints** default to `a.s2.dev` for the account and `{basin}.b.s2.dev` for basins, over https. A basin endpoint without the `{basin}` placeholder is direct, and the SDK then names the basin in the `s2-basin` header.
 3. **Defaults** are the same in every SDK:
 
-   | Setting | Default |
-   |---|---|
-   | Connection timeout | 3 s |
-   | Request timeout | 5 s |
-   | Retry attempts | 3, counting the first |
-   | Retry base delay | 100 ms minimum, 1 s maximum |
-   | Append retry policy | `all` |
-   | Read session retry policy | budgeted |
-   | Compression | none |
-   | Batching linger | 5 ms |
-   | Batch limits | 1000 records, 1 MiB |
-   | Unacked bytes limit | 5 MiB (minimum 1 MiB) |
-   | Unacked batches limit | none |
+   | Setting | Name | Default |
+   |---|---|---|
+   | Connection timeout | `connection_timeout` | 3 s |
+   | Request timeout | `request_timeout` | 5 s |
+   | Retry attempts | `max_attempts` | 3, counting the first |
+   | Retry base delay | `min_base_delay`, `max_base_delay` | 100 ms, 1 s |
+   | Append retry policy | `append_retry_policy` | `all` |
+   | Read session retry policy | `retry_policy` | `budgeted` |
+   | Compression | `compression` | `none` |
+   | Batching linger | `linger` | 5 ms |
+   | Batch limits | `max_batch_records`, `max_batch_bytes` | 1000 records, 1 MiB |
+   | Unacked bytes limit | `max_unacked_bytes` | 5 MiB (minimum 1 MiB) |
+   | Unacked batches limit | `max_unacked_batches` | none |
 
 4. **Compression** is `none`, `gzip` or `zstd`. When it is set, request bodies are compressed and compressed responses are accepted, on unary calls and sessions alike. A session frame is compressed only when its payload is at least 1 KiB.
 5. **Transports.** The SDK chooses which protocol carries a call. Every rule in this spec holds on every transport it offers; transports may differ only in speed.
@@ -156,7 +156,7 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
    - **d. Stream adapters** (TypeScript `readable`/`writable`): a write is a `submit()`, and closing the `writable` is `close()`. Erroring or cancelling either one aborts; leaving a `for await` over `readable` early cancels it. On failure, `readable` errors with the failure.
    - **e. Ownership:** a Producer owns its session, so closing or aborting the Producer does the same to the session. A session belongs to at most one Producer and is used only through it; if the caller closes it anyway, the Producer aborts.
 7. **Construction.** A session or a Producer is opened from a stream handle, with one set of options.
-   - **a.** A Producer's options are batching (linger and batch limits), an optional fencing token, an optional starting `match_seq_num`, and the unacked-bytes limit. It creates the session it owns.
+   - **a.** A Producer's options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It creates the session it owns.
    - **b.** The fencing token goes on every batch. `match_seq_num` goes on the first batch and rises by each batch's record count.
    - **c.** A batch is sent when it is full or when the linger expires, whichever comes first.
 
@@ -216,10 +216,10 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
 
 1. **Records.** A body is bytes. Headers are an ordered list of name and value pairs, both bytes. An SDK may add string conveniences on top.
 2. **Numbers.** A sequence number is an integer. A timestamp is milliseconds since the Unix epoch, exposed as an integer and not as a date type. A position is a sequence number and a timestamp.
-3. **Read start** is exactly one of a sequence number, a timestamp or a tail offset, expressed so that two cannot be given at once. With `clamp`, a start beyond the tail reads from the tail. Without it, that read fails (R6b).
+3. **Read start** is exactly one of `seq_num`, `timestamp` or `tail_offset`, expressed so that two cannot be given at once. With `clamp`, a start beyond the tail reads from the tail. Without it, that read fails (R6b).
 4. **Read stop** combines any of: `count` and `bytes` limits; `until`, a timestamp to stop before; and `wait`, the seconds to wait at the tail for new records.
 5. **Command records.** `fence(token)` and `trim(seq_num)` build them, and `is_command_record` recognizes one that was read. All three are public. `ignore_command_records` is applied by the SDK, which skips them.
-6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. The SDK has a public helper for this, and every byte limit in this spec is in metered bytes.
+6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. The SDK has a public helper for this, `metered_bytes`, and every byte limit in this spec is in metered bytes.
 7. **`check_tail`** returns the tail, as a position.
 
 ## M. Managing resources
