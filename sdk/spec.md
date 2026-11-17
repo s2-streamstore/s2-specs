@@ -10,7 +10,7 @@ Every rule, and every choice the spec leaves to an SDK, is held to four standard
 
 - Every rule is a requirement. Where an SDK has a choice, the rule says it may.
 - Each chapter has a letter and numbered rules, cited by id, such as `A6b`. Ids are stable: a later revision never renumbers a rule, and never reuses the id of one it removes. Add the revision, as in `r1 A6b`, when the wording matters.
-- Names are canonical. Every SDK uses the spec's words, in its own casing and naming idiom (see Languages), and may add a unit suffix where the language has no duration type. `name()` is a call; a bare `name` is an accessor, option or setting.
+- Names are canonical. Every SDK uses the spec's words, in its own casing and naming idiom (see Languages), and may add a unit suffix where the language has no duration type. `name()` is a call, `Name` is a type, and any other `name` is an accessor, option, setting or value.
 - Where an SDK splits a call in two (Go's `Submit()` then `Wait()`, Rust's `reserve()` then `submit()`), rules about the call apply to the pair.
 
 | Chapter | Covers |
@@ -34,7 +34,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 - **Sent.** A request or batch is sent in an attempt once any of its bytes may have left the SDK during it.
 - **Ack.** The server's confirmation that a batch of appended records is durable.
 - **Ticket.** What `submit()` returns once it has accepted a record or batch. Awaiting it gives that record's or batch's outcome (A6).
-- **Definite.** An error is definite when the attempt it reports certainly had no side effect. These are definite:
+- **Definite.** An error is definite when the attempt it reports certainly had no side effect, and its `has_no_side_effects` (E5) then says so. These are definite:
   - any error from an operation with no side effects, such as a read;
   - a server error whose code the [error-code table](https://s2.dev/docs/api/error-codes) lists with no side effect (E5);
   - a `SeqNumMismatchError` or `FencingTokenMismatchError` (E1a);
@@ -76,31 +76,31 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
    - **b.** A `416` is a `ReadUnwrittenError` with the stream's `tail`.
 2. **SDK errors.** Only a `ServerError` carries a status. The SDK's own errors are told apart by type:
 
-   | Error | When | Definite | Retryable |
+   | Error | When | Definite, on a call with side effects | Retryable |
    |---|---|---|---|
    | `ValidationError` | input fails validation (A2) | yes | no |
    | `ConnectError` | a connection cannot be made, or `connection_timeout` passes (T6a) | yes | yes |
    | `ConnectionLostError` | a connection breaks or is reset | only if nothing was sent, or the server reports the request unprocessed | yes |
    | `RequestTimeoutError` | `request_timeout` passes (T6b) | no | yes |
    | `AckTimeoutError` | a batch is not acked in time (T6c) | no | yes |
-   | `HeartbeatTimeoutError` | a read session hears nothing (T6d) | yes | yes |
+   | `HeartbeatTimeoutError` | a read session hears nothing (T6d) | — | yes |
    | `ProtocolError` | a response cannot be decoded, or fails an SDK check | no | no |
    | `ClientClosedError` | a call is made on a closed client (C7) | yes | no |
    | `SessionClosedError` | the session closed first (E4) | yes | no |
    | `AbortedError` | a session is aborted (A8c, R6d), or a unary call is cancelled (T7) | no | no |
    | `IndefiniteAppendError` | an append's definite final error follows an attempt that may have taken effect (E3) | no | as its inner error |
 
-   The Definite column is for operations with side effects. For an operation without them, such as a read, every error is definite.
+   On a call without side effects, such as a read, every error is definite (Terms).
 3. **Wrapping.** A definite final error describes only the last attempt. If an earlier attempt of the same append may have taken effect, the append fails instead with `IndefiniteAppendError` holding the final error, and that is indefinite. This applies to `append()` and to every batch in a session (A6b).
    - **a.** A wrapper is not the error inside it. `IndefiniteAppendError` and `SessionClosedError` do not copy their inner error's status or code, and do not match as its type.
    - **b.** The inner error is reachable through a typed accessor: `final_attempt_error` on `IndefiniteAppendError`, and `failure` on `SessionClosedError`. Where the language's cause chain cannot make the wrapper match as the inner type, the inner error is also the wrapper's cause (see Languages).
-4. **`SessionClosedError`.** The session closed without doing what was asked, and never will: an append session will not send the record or batch again, and a read session will not catch up. It is definite. For an append it describes only the last attempt, so like any definite outcome it is wrapped if an earlier attempt may have taken effect (E3). Its message includes the failure's message, and `failure` is empty when the session closed without one.
+4. **`SessionClosedError`.** The session closed without doing what was asked, and never will: an append session will not append the record or batch, and a read session will not catch up. It is definite. For an append it describes only the last attempt, so like any definite outcome it is wrapped if an earlier attempt may have taken effect (E3). Its message includes the failure's message, and `failure` is empty when the session closed without one.
 5. **Classification.** Every error has two public predicates. `has_no_side_effects` is true when the error is definite. `is_retryable` is true when the failure may be temporary, so the same request might succeed if made again; whether making it again is safe is for `has_no_side_effects` and T2 to say.
    - **a.** For a `ServerError`, both come from the error-code table. Each SDK's copy of the table is complete and is tested against the published one.
    - **b.** A code counts only when it arrives with the HTTP status the table lists for it. Otherwise the error is treated as having no code.
    - **c.** A `ServerError` with no code, or with a code the SDK does not recognize, is indefinite, and retryable by status alone: `408`, `429`, `500`, `502`, `503`, `504`.
    - **d.** For an SDK error, both come from the table in E2.
-6. **Messages.** Every error's message names the call it came from, and the basin and stream that call was for.
+6. **Messages.** Every error's message names the call it came from, and the basin and stream that call was for, if any.
 
 ## T. Retries, timeouts and cancelling
 
@@ -220,17 +220,29 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 
 ## M. Managing basins, streams and access tokens
 
-Every call here is unary. Each is named for its verb and resource: `create_basin()`, `ensure_basin()`, `reconfigure_basin()`, `delete_basin()`, `list_basins()` and `list_all_basins()`, the same for streams, and `issue_access_token()`, `revoke_access_token()`, `list_access_tokens()` and `list_all_access_tokens()`. An SDK that groups calls by resource may leave the resource out of the name (Go's `Basins.Ensure()`). A call this chapter does not cover, such as `get_basin_config()`, is an ordinary unary call, retried as T2 says.
+Every call here is unary, and named for its verb and resource:
+
+| | Basins | Streams | Access tokens |
+|---|---|---|---|
+| Create (M1) | `create_basin()` | `create_stream()` | — |
+| Ensure (M2) | `ensure_basin()` | `ensure_stream()` | — |
+| Reconfigure (M3) | `reconfigure_basin()` | `reconfigure_stream()` | — |
+| Delete (M4) | `delete_basin()` | `delete_stream()` | `revoke_access_token()` |
+| Issue (M5) | — | — | `issue_access_token()` |
+| List a page (M6) | `list_basins()` | `list_streams()` | `list_access_tokens()` |
+| List all (M7) | `list_all_basins()` | `list_all_streams()` | `list_all_access_tokens()` |
+
+An SDK that groups calls by resource may leave the resource out of the name (Go's `Basins.Ensure()`). A call this chapter does not cover, such as `get_basin_config()`, is an ordinary unary call, retried as T2 says.
 
 1. **Create.** Creating a basin or stream makes a new one, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
 2. **Ensure.** Ensuring a basin or stream creates it if it is missing, and otherwise applies the given config. It returns the resource and what happened: `created`, `updated` or `unchanged`.
 3. **Reconfigure.** Reconfiguring changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
-4. **Delete.** `delete_basin()`, `delete_stream()` and `revoke_access_token()` delete a resource. A basin or stream is then being deleted until deletion finishes (M8).
+4. **Delete.** Revoking an access token is how it is deleted. Deleting a basin or stream starts its deletion, and until that finishes the resource is being deleted (M8).
    - **a.** Deleting a resource that does not exist is an error, unless the caller passes `ignore_not_found`.
    - **b.** On a retry, after an attempt that may have taken effect, "not found" means the earlier attempt worked, and the call succeeds.
-5. **Issuing an access token.** The server reveals the token only in this response. The SDK does not keep it or log it (L3), and retries only definite errors (T2d).
-6. **Listing a page.** `list_basins()`, `list_streams()` and `list_access_tokens()` each make one call, and return one page as the server sent it: the items, and `has_more`, which says whether more remain. Each takes `prefix`, `start_after` and `limit`.
-7. **Listing all.** `list_all_basins()`, `list_all_streams()` and `list_all_access_tokens()` iterate every match lazily, fetching the next page only when the caller reaches it. Each takes `prefix` and `start_after`. Each page is a unary call with its own retries, and a page that fails ends the iteration with that error.
+5. **Issue.** Issuing an access token returns it, and the server reveals it only in this response. The SDK does not keep it or log it (L3), and retries only definite errors (T2d).
+6. **List a page.** One call, which returns one page as the server sent it: the items, and `has_more`, which says whether more remain. It takes `prefix`, `start_after` and `limit`.
+7. **List all.** Iterates every match lazily, fetching the next page only when the caller reaches it. It takes `prefix` and `start_after`. Each page is a unary call with its own retries, and a page that fails ends the iteration with that error.
 8. **Resources being deleted.** A page from M6 includes basins and streams that are being deleted, each marked as such. Iteration under M7 leaves them out, unless `include_deleted` is set.
 
 ## F. Forward compatibility
@@ -245,7 +257,7 @@ A released SDK keeps working against a newer server.
 ## L. Logging
 
 1. **Off by default.** The SDK logs through the language's usual facility, and emits nothing unless the application turns it on.
-2. **Debug or finer.** Everything the SDK logs, retries, reconnects and failures included, is at debug level or finer. A failure reaches the application as an error, not as a log line.
+2. **Debug or finer.** The SDK logs only at debug level or finer, even for retries, reconnects and failures. A failure reaches the application as an error, not as a log line.
 3. **Secrets.** Record bodies, access tokens and encryption keys are never logged. Tokens and keys are also masked when a client, a handle or their settings are printed.
 
 ## Settings and constants
