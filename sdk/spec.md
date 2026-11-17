@@ -37,7 +37,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 - **Definite.** An error is definite when the attempt it reports certainly had no side effect. These are definite:
   - any error from an operation with no side effects, such as a read;
   - a server error whose code the [error-code table](https://s2.dev/docs/api/error-codes) lists with no side effect (E5);
-  - a `412` append condition failure;
+  - a `SeqNumMismatchError` or `FencingTokenMismatchError` (E1a);
   - a failure before the request or batch was sent, or one the server reports as unprocessed (a connect failure, `REFUSED_STREAM`, a stream above an HTTP/2 GOAWAY's `last_stream_id`);
   - `SessionClosedError` (E4).
 
@@ -64,14 +64,16 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 
 1. **Records.** A body is bytes. Headers are an ordered list of name and value pairs, both bytes. An SDK may add string conveniences on top.
 2. **Numbers.** A sequence number is an integer. A timestamp is milliseconds since the Unix epoch, exposed as an integer and not as a date type. A position is a sequence number and a timestamp.
-3. **Read start.** Exactly one of `seq_num`, `timestamp` or `tail_offset`, in a type that cannot hold two. With `clamp`, a start beyond the tail reads from the tail. Without it, the read fails with a `416` that carries the tail (E1).
+3. **Read start.** Exactly one of `seq_num`, `timestamp` or `tail_offset`, in a type that cannot hold two. With `clamp`, a start beyond the tail reads from the tail. Without it, the read fails with `ReadUnwrittenError` (E1b).
 4. **Read stop.** Any of: `count` and `bytes` limits; `until`, a timestamp to stop before; and `wait`, how long to wait for new records. Their meaning and defaults are the API's, and the SDK leaves any the caller did not set to the API. So `wait` defaults to zero when `count`, `bytes` or `until` bounds the read, and otherwise waits forever. A unary read is always bounded, by the API's own limits if not the caller's, and waits at most 60 s. On a session, `wait` bounds the time between records.
 5. **Command records.** `fence(token)` and `trim(seq_num)` build them, and `is_command_record()` recognizes one that was read; all three are public. Reads return command records like any other.
 6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. `metered_bytes()` is public, and every byte limit in this spec is in metered bytes.
 
 ## E. Errors
 
-1. **Server errors.** A `ServerError` exposes its HTTP status, its code (when the body has one) and its message, exactly as returned. Status and code are the contract; the message is for people and is never parsed. A `412` carries the expected sequence number or fencing token, and a `416` carries the tail, as typed fields.
+1. **Server errors.** A `ServerError` exposes its HTTP status, its code (when the body has one) and its message, exactly as returned. Status and code are the contract; the message is for people and is never parsed. Two kinds have types of their own, named for what happened rather than for their status, and each is also a `ServerError`:
+   - **a.** A `412` is a `SeqNumMismatchError` with `expected_seq_num`, or a `FencingTokenMismatchError` with `expected_fencing_token`.
+   - **b.** A `416` is a `ReadUnwrittenError` with the stream's `tail`.
 2. **SDK errors.** Only a `ServerError` carries a status. The SDK's own errors are told apart by type:
 
    | Error | When | Definite | Retryable |
@@ -104,7 +106,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 
 1. **What is retried.** An attempt is retried when its error is retryable (E5), repeating it is safe (T2) and the budget allows (T3). Otherwise that error is the final error: a unary call fails with it, and a session closes (A8b, R6c).
 2. **Safe to repeat.**
-   - **a.** Reads, and calls that set a state (ensure, reconfigure, delete), are always safe to repeat.
+   - **a.** Reads, and calls that set a state (ensure, reconfigure, delete, revoke), are always safe to repeat.
    - **b.** Creating a basin or a stream carries a request token in `s2-request-token`, made once per call and reused on every attempt, so it is always safe to repeat too.
    - **c.** An append is safe to repeat as `append_retry_policy` says. Under `all`, it always is. Under `no_side_effects`, it is safe only when no unacked batch may have taken effect: the error is definite, or nothing unacked was sent.
    - **d.** Any other call that is not idempotent, such as issuing an access token, is safe to repeat only after a definite error.
@@ -128,7 +130,10 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 `append()`, and two ways to append continuously: `AppendSession`, which takes batches, and `Producer`, which takes records, batches them, and owns an `AppendSession` (A8e). Rules A3 to A9 cover both, called sessions in this chapter; where they differ, the rule names one.
 
 1. **Unary append.** `append()` sends one batch and returns its ack, retrying as `append_retry_policy` says (T2c). An ack holds three positions: `start`, the first record appended; `end`, one past the last record appended; and `tail`, the stream's tail, which is past `end` when others appended at the same time. A session's acks hold the same three.
-2. **Validation.** `append()` and `submit()` check a record or batch before anything else: before sending, and before waiting for capacity. A batch over the limits (1000 records, 1 MiB) is invalid. An invalid one fails with `ValidationError`; nothing is accepted, and the session stays open.
+2. **Validation.** `append()` and `submit()` check a record or batch before anything else: before sending, and before waiting for capacity. An invalid one fails with `ValidationError`; nothing is accepted, and the session stays open. These are invalid:
+   - **a.** a record over 1 MiB or, on a Producer, over `max_batch_bytes`;
+   - **b.** a batch that is empty, or over 1000 records or 1 MiB;
+   - **c.** a fencing token over 36 bytes.
 3. **Opening.** A session is opened from a stream handle, with its options.
    - **a.** An `AppendSession`'s options are `max_unacked_bytes` and `max_unacked_batches`.
    - **b.** A `Producer`'s options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It opens the `AppendSession` it owns.
@@ -137,7 +142,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
    - **b.** Records are ordered by acceptance.
    - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing. One still waiting when the session closes, or made after it has, fails with `SessionClosedError`; `flush()` and `close()` never do.
 5. **Batching.** A Producer sends a batch when it is full, or when `linger` has passed since its first record was accepted, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. `match_seq_num` goes on the first batch, and rises by each batch's record count.
-6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
+6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. On success, an `AppendSession`'s ticket gives the batch's ack, and a Producer's gives an `IndexedAppendAck`: the record's own `seq_num`, and `batch`, its batch's ack. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
    - **a.** If the final error came from the server, it belongs to the oldest unacked batch, provided that batch was sent: that batch was **rejected**. Each batch gets the first row that fits:
 
      | Batch | Outcome |
@@ -160,7 +165,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
    - **e. Ownership.** A Producer owns its session: closing or aborting the Producer closes or aborts the session.
 9. **Failure.** A session's failure is its final error, wrapped if it is definite and any batch's outcome was wrapped (A6b), or `AbortedError` (A8c). A Producer's failure is that of the session it owns, or `AbortedError`.
 
-**Example.** A session accepted batches A, B and C, in that order. A and B were sent; C was not. In each row, the last error is final: it was not retried. "closed" is `SessionClosedError`, and `Indefinite(x)` is `IndefiniteAppendError` holding `x`.
+**Example.** A session accepted batches A, B and C, in that order. A and B were sent; C was not. In each row, the last error is final: it was not retried. "closed" is `SessionClosedError`, `412` is either error of E1a, and `Indefinite(x)` is `IndefiniteAppendError` holding `x`.
 
 | What happened | A | B | C | `close()` |
 |---|---|---|---|---|
@@ -176,7 +181,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 1. **Unary read.** `read()` returns one batch as the server sent it: its records, and the tail if the server reported one. A batch has no records only when a stop condition was met before any record, such as `wait` running out at the tail; it does not mean the end of the stream.
 2. **Tail.** `check_tail()` returns the tail.
 3. **Iteration.** Iterating a session yields records, one at a time, in sequence-number order, each delivered once.
-   - **a.** Batches are how the server ships records, and carry no meaning. An SDK may also offer a batch view; it delivers each batch whole, and every rule here applies to it per batch.
+   - **a.** Batches are how the server ships records, and carry no meaning. An SDK may also offer a batch view; it delivers each batch whole, never an empty one, and every rule here applies to it per batch. Heartbeats change state (R4), not what is delivered.
    - **b.** The session fetches ahead by a bounded amount, and no further until the caller takes records.
    - **c.** Iteration has one consumer. The accessors in R4 are safe to call from anywhere, at any time, and never block.
 4. **State.** Three accessors. A record's effect on them is visible before the record is delivered.
@@ -220,7 +225,7 @@ Every call here is unary. Each is named for its verb and resource: `create_basin
 1. **Create.** Creating a basin or stream makes a new one, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
 2. **Ensure.** Ensuring a basin or stream creates it if it is missing, and otherwise applies the given config. It returns the resource and what happened: `created`, `updated` or `unchanged`.
 3. **Reconfigure.** Reconfiguring changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
-4. **Delete.** Deleting a basin or stream starts its deletion. Until deletion finishes, the resource is being deleted (M8).
+4. **Delete.** `delete_basin()`, `delete_stream()` and `revoke_access_token()` delete a resource. A basin or stream is then being deleted until deletion finishes (M8).
    - **a.** Deleting a resource that does not exist is an error, unless the caller passes `ignore_not_found`.
    - **b.** On a retry, after an attempt that may have taken effect, "not found" means the earlier attempt worked, and the call succeeds.
 5. **Issuing an access token.** The server reveals the token only in this response. The SDK does not keep it or log it (L3), and retries only definite errors (T2d).
@@ -259,13 +264,15 @@ Settings have the same names and defaults in every SDK.
 | `max_unacked_bytes` | `AppendSession`, `Producer` | 5 MiB (minimum 1 MiB) |
 | `max_unacked_batches` | `AppendSession` | none |
 | `linger` | `Producer` | 5 ms |
-| `max_batch_records`, `max_batch_bytes` | `Producer` | 1000 records, 1 MiB |
+| `max_batch_records`, `max_batch_bytes` | `Producer` | 1000 records, 1 MiB (also the maximum) |
 
 Constants are fixed, and stated in the rule they belong to. This table only gathers them.
 
 | Constant | Value | Rule |
 |---|---|---|
-| Batch limits | 1000 records, 1 MiB | A2 |
+| Largest record | 1 MiB | A2a |
+| Largest batch | 1000 records, 1 MiB | A2b |
+| Longest fencing token | 36 bytes | A2c |
 | Smallest session frame that is compressed | 1 KiB | C3 |
 | Longest `wait` on a unary read | 60 s | D4 |
 | Shortest gap between acting on reconnect advice | 60 s | T5a |
