@@ -237,9 +237,7 @@ An SDK that groups calls by resource may leave the resource out of the name (Go'
 1. **Create.** Creating a basin or stream makes a new one, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
 2. **Ensure.** Ensuring a basin or stream creates it if it is missing, and otherwise applies the given config. It returns the resource and what happened: `created`, `updated` or `unchanged`.
 3. **Reconfigure.** Reconfiguring changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
-4. **Delete.** Revoking an access token is how it is deleted. Deleting a basin or stream starts its deletion, and until that finishes the resource is being deleted (M8).
-   - **a.** Deleting a resource that does not exist is an error, unless the caller passes `ignore_not_found`.
-   - **b.** On a retry, after an attempt that may have taken effect, "not found" means the earlier attempt worked, and the call succeeds.
+4. **Delete.** Deleting a resource makes sure it is gone, so it succeeds when the resource does not exist or is already being deleted, on any attempt. Revoking an access token is how it is deleted. Deleting a basin or stream starts its deletion, and until that finishes the resource is being deleted (M8).
 5. **Issue.** Issuing an access token returns it, and the server reveals it only in this response. The SDK does not keep it or log it (L3), and retries only definite errors (T2d).
 6. **List a page.** One call, which returns one page as the server sent it: the items, and `has_more`, which says whether more remain. It takes `prefix`, `start_after` and `limit`.
 7. **List all.** Iterates every match lazily, fetching the next page only when the caller reaches it. It takes `prefix` and `start_after`. Each page is a unary call with its own retries, and a page that fails ends the iteration with that error.
