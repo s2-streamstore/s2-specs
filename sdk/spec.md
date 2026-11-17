@@ -136,6 +136,7 @@ Whatever error reaches the caller says what is safe to do next: `has_no_side_eff
    - **c. Ack.** On an append session, an ack is the answer to a batch, so `request_timeout` bounds it too: a batch not acked within `request_timeout` of being sent times out.
    - **d. Heartbeat.** On a read session, a connection that receives nothing for 20 s, not even a heartbeat, times out.
 7. **Cancelling.** Cancelling a unary call stops it at once, including while it waits to retry, and it is not retried. How a call is cancelled, and what the caller then sees, depends on the language (see Languages). A cancelled `append()` may have taken effect.
+8. **Attempt header.** Every request carries `s2-attempt`, the attempt's number as T3 counts it: `1` for the first try, and one more for each retry. On a session, the count starts again at `1` whenever the budget is restored (T4a), and a planned handover (T5) does not raise it.
 
 ## A. Appending
 
@@ -314,9 +315,9 @@ Some rules are correct only because the server behaves a certain way. These are 
 | A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | [`s2s.md`](../s2/v1/s2s.md) |
 | An error the error-code table lists with no side effect had none, a `412` included. | Terms, E5a | [Error codes](https://s2.dev/docs/api/error-codes) |
 | A create retried with the same request token does not conflict with its earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
-| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | seen in s2-lite |
-| Deleting a basin or stream that is already being deleted succeeds. | M4 | seen in s2-lite |
-| Revoking an access token that does not exist either succeeds or returns `404`. | M4 | to confirm |
+| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | s2-lite and the service; not yet documented |
+| Deleting a basin or stream that is already being deleted succeeds. | M4 | s2-lite and the service; not yet documented |
+| Revoking an access token that does not exist returns `404`. | M4 | the service; not yet documented |
 
 ## Languages
 

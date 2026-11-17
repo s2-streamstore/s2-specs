@@ -42,6 +42,7 @@ The spec's core is one chain of ideas: attempt, definite, final error, wrapped, 
 - **T4b.** Some readers, such as a consumer that follows a stream for its whole life, should never give up on a temporary failure. The policy is `unbounded` rather than `indefinite`, which everywhere else in the spec means "may have taken effect".
 - **T5.** A planned handover is not a failure, so it uses no budget and does not back off. The append handover follows `s2s.md`, which has the server acknowledge everything it accepted before the session moves.
 - **T6c.** An ack is the server's answer to a batch, so the ack timeout and `request_timeout` are one idea, "how long the server takes to answer", and one setting. Python already worked this way.
+- **T8.** The attempt header shows the service how often SDKs need to retry, without any reporting from the SDK. It is sent on the first try too, so a missing header means a client that does not send it, not a first attempt. On a session it counts only failures since the session last made progress, so a reconnect after one failure reads `2` however long the session has run, and a planned handover never looks like a failure.
 
 ## A. Appending
 
