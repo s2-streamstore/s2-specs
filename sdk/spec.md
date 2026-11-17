@@ -258,6 +258,14 @@ A released SDK keeps working against a newer server.
 3. **Errors are returned, not logged.** A failure goes to the caller. The SDK does not also log it above debug.
 4. **Secrets.** Record bodies, access tokens and encryption keys are never logged. Tokens and keys are also masked when a client or its settings are printed.
 
+## Conformance
+
+An SDK conforms to a revision when it follows every rule in it. To make that checkable:
+
+- Every testable rule has a test in each SDK, tagged with its rule id, such as `A4b`.
+- A rule without a tagged test counts as not yet met.
+- When a revision changes a rule, the Revisions section names it, so each SDK knows which tests to revisit.
+
 ## Revisions
 
 - **1.** Initial version.
