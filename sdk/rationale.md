@@ -69,6 +69,11 @@ The spec's core is one chain of ideas: attempt, definite, final error, wrapped, 
 
 - **L2.** A library cannot know what deserves an application's attention. Failures are returned to the caller; logging them as well would report each one twice.
 
+## Settings and constants
+
+- **`linger`.** The 5 ms default matches the server's limit of 200 batches a second per stream and connection: a Producer whose batches are not full sends at most that many.
+- **`max_attempts`.** It counts the first try, so it is at least 1.
+
 ## Server guarantees
 
 Several rules are correct only if the server behaves a certain way. Listing those guarantees in one place, each with its source, makes them easy to check when the server changes.

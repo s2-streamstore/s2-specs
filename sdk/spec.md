@@ -279,7 +279,7 @@ Settings have the same names and defaults in every SDK.
 |---|---|---|
 | `connection_timeout` | client | 3 s |
 | `request_timeout` | client | 5 s |
-| `max_attempts` | client | 3 |
+| `max_attempts` | client | 3 (minimum 1) |
 | `min_base_delay`, `max_base_delay` | client | 100 ms, 1 s |
 | `append_retry_policy` | client | `all` |
 | `compression` | client | `none` |
@@ -310,10 +310,12 @@ Some rules are correct only because the server behaves a certain way. These are 
 |---|---|---|
 | A batch becomes durable whole, or not at all. | A6 | [Appends](https://s2.dev/docs/concepts/appends) |
 | A session's batches become durable in the order they were sent, and once one fails, no later batch does. | A6a, A6c | [Appends](https://s2.dev/docs/concepts/appends) |
+| An append session over the append rate limit is slowed, not failed. | A4 | [Limits](https://s2.dev/docs/platform/limits) |
 | An append session that stops sending after reconnect advice gets an ack for everything it sent, then a clean end. | T5a | [`s2s.md`](../s2/v1/s2s.md) |
 | A session ended with `server_draining` sends every ack first; whatever it did not ack was never processed. | T5b | [`s2s.md`](../s2/v1/s2s.md) |
 | A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | [`s2s.md`](../s2/v1/s2s.md) |
 | An error the error-code table lists with no side effect had none, a `412` included. | Terms, E5a | [Error codes](https://s2.dev/docs/api/error-codes) |
+| A unary call refused for its rate carries `retry-after-ms`. | T3 | the service; not yet documented |
 | A create retried with the same request token does not conflict with its earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
 | Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | s2-lite and the service; not yet documented |
 | Deleting a basin or stream that is already being deleted succeeds. | M4 | s2-lite and the service; not yet documented |
