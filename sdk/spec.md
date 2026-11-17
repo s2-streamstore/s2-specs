@@ -16,9 +16,11 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
 | C | Client: construction, defaults, compression, transports |
 | E | Errors |
 | T | Retries and timeouts |
+| U | Unary calls: `append`, `read`, `check_tail` |
 | A | Appending: `AppendSession` and `Producer` |
 | R | Reading: `ReadSession` |
 | D | Records and inputs |
+| M | Managing resources |
 | L | Listing |
 | F | Forward compatibility |
 | G | Logging |
@@ -101,6 +103,21 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
    - **b. Request timeout:** a unary call, from sending the request to receiving the whole response. A unary read with `wait` gets the request timeout plus `wait`. For a session it bounds only the wait for the response to begin.
    - **c. Ack timeout:** on an append session, a batch not acked within the request timeout after being sent.
    - **d. Heartbeat timeout:** on a read session, a connection that delivers nothing for 20 s, not even a heartbeat.
+
+## U. Unary calls
+
+`append`, `read` and `check_tail` on a stream, and every call in chapters M and L.
+
+1. **One result or one error.** A unary call returns its result, or raises its final error once T allows no further retry. The request timeout (T5b) applies to each attempt.
+2. **`append`** sends one batch and returns its ack.
+   - **a.** The batch is validated first, as in A1. An invalid batch is not sent.
+   - **b.** An ack holds three positions: `start`, the first record appended; `end`, one past the last record appended; and `tail`, the stream's tail, which is past `end` when others appended at the same time.
+   - **c.** Retries follow the append retry policy (T2c). A definite final error is wrapped when an earlier attempt may have taken effect (see Terms).
+3. **`read`** returns one batch: its records, the tail when the read is near the end of the stream, and `next_seq_num`.
+   - **a.** `next_seq_num` is where to read next: one past the last record the server returned, skipped records included. It is unknown only when the server returned no records and no tail.
+   - **b.** A batch can be empty, for example when every record in it was skipped. An empty batch does not mean the end of the stream; `next_seq_num` and the tail say where the caller is.
+   - **c.** With `wait`, a read at the tail waits up to that long for new records.
+4. **Cancelling** a unary call (Go's context, TypeScript's signal, cancelling the task in Python, dropping the future in Rust) stops it at once, including while it waits to retry. It is not retried. In Go and TypeScript the call reports `Aborted` (A6b); in Python and Rust the caller's own cancellation ends it. A cancelled `append` may have taken effect.
 
 ## A. Appending
 
@@ -203,6 +220,18 @@ Method names are generic: each SDK uses its own casing and idioms. Where an SDK 
 5. **Command records.** `fence(token)` and `trim(seq_num)` build them, and `is_command_record` recognizes one that was read. All three are public. `ignore_command_records` is applied by the SDK, which skips them.
 6. **Metered bytes.** A record's metered bytes are 8, plus 2 per header, plus the length of every header name and value, plus the length of the body. The SDK has a public helper for this, and every byte limit in this spec is in metered bytes.
 7. **`check_tail`** returns the tail, as a position.
+
+## M. Managing resources
+
+Basins, streams and access tokens. Every call here is unary (U).
+
+1. **Create** makes a new resource, and fails with a conflict if the name is taken. It carries a request token (T2b), so a retry does not conflict with its own earlier attempt.
+2. **Ensure** creates the resource if it is missing, and otherwise applies the given config. It returns the resource and which of three things happened: created, updated, or unchanged.
+3. **Reconfigure** changes only the fields it is given, and returns the config as it now stands. Each field has three states: left unchanged, which is the default; set to a value; or reset to the server's default.
+4. **Delete** starts deletion. The resource is then listed as being deleted until it is gone (L3).
+   - **a.** Deleting a resource that does not exist is an error, unless the caller passes `ignore_not_found`.
+   - **b.** On a retry, after an attempt that may have taken effect, "not found" means the delete worked, and the call succeeds.
+5. **Issuing an access token** returns the token once. The SDK does not keep it or log it (G4), and retries only definite errors (T2d).
 
 ## L. Listing
 
