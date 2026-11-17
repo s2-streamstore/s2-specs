@@ -10,7 +10,7 @@ Every rule, and every choice the spec leaves to an SDK, is held to four standard
 
 - Every rule is a requirement. Where an SDK has a choice, the rule says it may.
 - Each chapter has a letter and numbered rules, cited by id, such as `A6b`. Ids are stable: a later revision never renumbers a rule, and never reuses the id of one it removes. Add the revision, as in `r1 A6b`, when the wording matters.
-- Names are canonical. Every SDK uses the spec's words, in its own casing and naming idiom (see Languages), and may add a unit suffix where the language has no duration type. `name()` is a call, `Name` is a type, and any other `name` is an accessor, option, setting or value.
+- Names are canonical. Every SDK uses the spec's words, in its own casing and naming idiom (see [Languages](#errors)), and may add a unit suffix where the language has no duration type. `name()` is a call, `Name` is a type, and any other `name` is an accessor, option, setting or value.
 - Where an SDK splits a call in two (Go's `Submit()` then `Wait()`, Rust's `reserve()` then `submit()`), rules about the call apply to the pair.
 
 | Chapter | Covers |
@@ -105,7 +105,7 @@ Whatever error reaches the caller says what is safe to do next: `has_no_side_eff
    On a call without side effects, such as a read, every error is definite (Terms).
 3. **Wrapping.** A definite final error describes only the last attempt. If an earlier attempt of the same append may have taken effect, the append fails instead with `IndefiniteAppendError` holding the final error, and that is indefinite. This applies to `append()` and to every batch in a session (A6b).
    - **a.** A wrapper is not the error inside it. `IndefiniteAppendError` and `SessionClosedError` do not copy their inner error's status or code, and do not match as its type.
-   - **b.** The inner error is reachable through a typed accessor: `final_attempt_error` on `IndefiniteAppendError`, and `failure` on `SessionClosedError`. Where the language's cause chain cannot make the wrapper match as the inner type, the inner error is also the wrapper's cause (see Languages).
+   - **b.** The inner error is reachable through a typed accessor: `final_attempt_error` on `IndefiniteAppendError`, and `failure` on `SessionClosedError`. Where the language's cause chain cannot make the wrapper match as the inner type, the inner error is also the wrapper's cause (see [Languages](#errors)).
 4. **`SessionClosedError`.** The session closed without doing what was asked, and never will: an append session will not append the record or batch, and a read session will not catch up. It is definite. For an append it describes only the last attempt, so like any definite outcome it is wrapped if an earlier attempt may have taken effect (E3). Its message includes the failure's message, and `failure` is empty when the session closed without one.
 5. **Classification.** Every error has two public predicates. `has_no_side_effects` is true when the error is definite. `is_retryable` is true when the failure may be temporary, so the same request might succeed if made again; whether making it again is safe is for `has_no_side_effects` and T2 to say.
    - **a.** For a `ServerError`, both come from the error-code table. Each SDK's copy of the table is complete and is tested against the published one.
@@ -135,7 +135,7 @@ Whatever error reaches the caller says what is safe to do next: `has_no_side_eff
    - **b. Request.** `request_timeout` bounds how long the server takes to answer: on a unary call, from sending the request to receiving the whole response; on a session, until the response begins. A unary read with `wait` gets `request_timeout` plus `wait`.
    - **c. Ack.** On an append session, an ack is the answer to a batch, so `request_timeout` bounds it too: a batch not acked within `request_timeout` of being sent times out.
    - **d. Heartbeat.** On a read session, a connection that receives nothing for 20 s, not even a heartbeat, times out.
-7. **Cancelling.** Cancelling a unary call stops it at once, including while it waits to retry, and it is not retried. How a call is cancelled, and what the caller then sees, depends on the language (see Languages). A cancelled `append()` may have taken effect.
+7. **Cancelling.** Cancelling a unary call stops it at once, including while it waits to retry, and it is not retried. How a call is cancelled, and what the caller then sees, depends on the language (see [Languages](#cancelling-a-unary-call)). A cancelled `append()` may have taken effect.
 8. **Attempt header.** Every request carries `s2-attempt`, the attempt's number as T3 counts it: `1` for the first try, and one more for each retry. On a session, the count starts again at `1` whenever the budget is restored (T4a), and a planned handover (T5) does not raise it.
 
 ## A. Appending
@@ -173,7 +173,7 @@ Whatever error reaches the caller says what is safe to do next: `has_no_side_eff
 8. **Closing.** A session closes for one of three reasons.
    - **a. The caller.** `close()` stops accepting, sends any partial batch, and waits until everything accepted has an outcome. Then it returns, or fails with the failure. Every call to it gives the same result.
    - **b. A failure.** The final error closes the session at once, and every batch gets its outcome (A6).
-   - **c. An abort.** Closing the client (C7), or a trigger that depends on the language (see Languages), closes the session at once with an indefinite `AbortedError` failure, and every batch gets its outcome (A6). With no batch awaiting an outcome, nothing was lost, so an abort is a clean close with no failure. Cancelling any other call only stops that call's wait.
+   - **c. An abort.** Closing the client (C7), or a trigger that depends on the language (see [Languages](#ending-a-session)), closes the session at once with an indefinite `AbortedError` failure, and every batch gets its outcome (A6). With no batch awaiting an outcome, nothing was lost, so an abort is a clean close with no failure. Cancelling any other call only stops that call's wait.
    - **d. Cause.** `AbortedError` carries what triggered the abort as its cause, in languages where errors have causes.
    - **e. Ownership.** A Producer owns its session: closing or aborting the Producer closes or aborts the session.
 9. **Failure.** A session's failure is its final error, wrapped if it is definite and any batch's outcome was wrapped (A6b), or `AbortedError` (A8c). A Producer's failure is that of the session it owns, or `AbortedError`.
@@ -208,9 +208,9 @@ Whatever error reaches the caller says what is safe to do next: `has_no_side_eff
    - **d.** If the session closes before catching up, it fails with the failure, or with `SessionClosedError` when there is none.
 6. **Closing.** A read session closes for one of four reasons.
    - **a. A stop condition.** `count`, `bytes` or `until` was reached, or `wait` ran out. Iteration finishes with no error.
-   - **b. The caller.** The consumer closes the session (see Languages). Iteration finishes with no error. Cancelling a wait for the next record only stops that wait: nothing is lost, and the session stays open.
+   - **b. The caller.** The consumer closes the session (see [Languages](#ending-a-session)). Iteration finishes with no error. Cancelling a wait for the next record only stops that wait: nothing is lost, and the session stays open.
    - **c. A failure.** Every record already fetched is delivered first; then iteration fails with the failure, once.
-   - **d. An abort.** Something outside the code that iterates the session aborts it: closing the client (C7), or the session's own abort where the language has one (see Languages). Records fetched but not delivered are dropped, and iteration fails with `AbortedError` (A8d), even when nothing was fetched: finishing cleanly would look like a stop condition.
+   - **d. An abort.** Something outside the code that iterates the session aborts it: closing the client (C7), or the session's own abort where the language has one (see [Languages](#ending-a-session)). Records fetched but not delivered are dropped, and iteration fails with `AbortedError` (A8d), even when nothing was fetched: finishing cleanly would look like a stop condition.
    - **e.** After closing, `next_seq_num` and `last_observed_tail` keep their last values. `is_caught_up` keeps its last value after a stop condition or the caller, and is false after a failure or an abort.
 7. **Failure.** A read session's failure is its final error, or `AbortedError` (R6d). A read has no side effects, so nothing is wrapped.
 8. **Reconnects.** They are invisible to iteration. T4 and T5 decide when one happens.
@@ -323,23 +323,40 @@ Some rules are correct only because the server behaves a certain way. These are 
 
 ## Languages
 
-Where a rule depends on the language, this is what it means in each.
+Where a rule depends on the language, this is what it means in each. Every table has a row per language, so a column compares them.
 
-| | Python | TypeScript | Go | Rust |
+### Ending a session
+
+| | Close an append session or Producer (A8a) | Abort one (A8c) | Close a read session (R6b) | Abort one, besides closing the client (R6d) |
 |---|---|---|---|---|
-| An error the spec names `XError` (E2) | class `XError` | class `XError` | type `*XError`, matched with `errors.As` | variant `X` of the call's error enum |
-| Abort an append session or Producer (A8c) | cancel `close()`, or leave `async with` on a `BaseException` that is not an `Exception` (a cancellation, `KeyboardInterrupt`, `GeneratorExit`) | the session's abort signal | cancel the constructor's context | drop it, including an unfinished `close()` |
-| Close an append session or Producer (A8a) | `close()`, or leave `async with` any other way | `close()`, or `await using` | `Close()` | `close()` |
-| Close a read session (R6b) | `close()`, or leave `async with` | `cancel()` it (it is a `ReadableStream`), or `await using` | `Close()` | drop it |
-| Abort a read session, besides closing the client (R6d) | none | the session's abort signal | cancel the constructor's context | none |
-| Cancel a unary call (T7) | cancel the task | the call's abort signal | cancel the call's context | drop the future |
-| What a cancelled unary call reports (T7) | the task's cancellation | `AbortedError` | `AbortedError` | nothing: the future is gone |
-| The cause `AbortedError` carries (A8d) | the exception | `signal.reason` | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds | none |
-| A wrapper's cause, besides its typed accessor (E3b) | `__cause__` | `cause` | none: the inner error is kept out of the `Unwrap` chain | `source()` |
+| Python | `close()`, or leave `async with` normally or on an `Exception` | cancel `close()`, or leave `async with` on any other `BaseException` (a cancellation, `KeyboardInterrupt`, `GeneratorExit`) | `close()`, or leave `async with` | none |
+| TypeScript | `close()`, or `await using` | the session's abort signal | `cancel()` it (it is a `ReadableStream`), or `await using` | the session's abort signal |
+| Go | `Close()` | cancel the constructor's context | `Close()` | cancel the constructor's context |
+| Rust | `close()` | drop it, including an unfinished `close()` | drop it | none |
 
-A wrapper's inner error can be its cause in Python, TypeScript and Rust because `except`, `instanceof` and `match` do not follow causes. Go's `errors.Is` and `errors.As` do follow `Unwrap`, so a Go wrapper does not unwrap to its inner error.
+### Cancelling a unary call
 
-**TypeScript stream adapters.** An `AppendSession` or `Producer` also offers `writable`, which takes what `submit()` takes, and `readable`, which yields acks. A write is a `submit()`, and closing `writable` is `close()`. Aborting `writable`, or cancelling `readable` (as leaving a `for await` over it early does), aborts the session. On failure, `readable` errors with the failure.
+| | How (T7) | What the caller sees (T7) |
+|---|---|---|
+| Python | cancel the task | the task's cancellation |
+| TypeScript | the call's abort signal | `AbortedError` |
+| Go | cancel the call's context | `AbortedError` |
+| Rust | drop the future | nothing: the future is gone |
+
+### Errors
+
+| | An error the spec names `XError` (E2) | A wrapper's cause, besides its accessor (E3b) | The cause `AbortedError` carries (A8d) |
+|---|---|---|---|
+| Python | class `XError` | `__cause__` | the exception |
+| TypeScript | class `XError` | `cause` | `signal.reason` |
+| Go | type `*XError`, matched with `errors.As` | none: the inner error stays out of the `Unwrap` chain | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds |
+| Rust | variant `X` of the call's error enum | `source()` | none |
+
+A wrapper's inner error can be its cause in Python, TypeScript and Rust because `except`, `instanceof` and `match` do not follow causes. Go's `errors.Is` and `errors.As` do follow `Unwrap`, so a Go wrapper does not unwrap to its inner error. `AbortedError` wraps nothing (E3a), so its cause can stay in Go's `Unwrap` chain.
+
+### TypeScript stream adapters
+
+An `AppendSession` or `Producer` also offers `writable`, which takes what `submit()` takes, and `readable`, which yields acks. A write is a `submit()`, and closing `writable` is `close()`. Aborting `writable`, or cancelling `readable` (as leaving a `for await` over it early does), aborts the session. On failure, `readable` errors with the failure.
 
 ## Conformance
 
