@@ -255,7 +255,7 @@ A released SDK keeps working against a newer server.
 1. **Off by default.** The SDK logs through the language's usual facility and emits nothing unless the application turns it on.
 2. **Levels.** Nothing on a healthy path is logged above debug. Requests, batches and records are debug or finer, and so are retries and reconnects.
 3. **Errors are returned, not logged.** A failure goes to the caller. The SDK does not also log it above debug.
-4. **Secrets.** Record bodies, access tokens and encryption keys are never logged.
+4. **Secrets.** Record bodies, access tokens and encryption keys are never logged. Tokens and keys are also masked when a client or its settings are printed.
 
 ## Revisions
 
