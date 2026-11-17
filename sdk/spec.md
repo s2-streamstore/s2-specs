@@ -18,7 +18,7 @@ Every rule, and every choice the spec leaves to an SDK, is held to four standard
 | D | Data: records and read inputs |
 | E | Errors |
 | T | Retries, timeouts and cancelling |
-| A | Appending: `append()`, `AppendSession`, `Producer` |
+| A | Appending: `append()`, `AppendSession`, `Producer`, `Batcher` |
 | R | Reading: `read()`, `check_tail()`, `ReadSession` |
 | M | Managing basins, streams and access tokens |
 | F | Forward compatibility |
@@ -170,6 +170,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **b.** Records are ordered by acceptance.
    - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing. One still waiting when the session starts closing or closes, or made after, fails at once with `SessionClosedError`; `flush()` and `close()` never do.
 5. **Batching.** A Producer sends a batch when it is full, or when `linger` has passed since its first record was accepted, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. When a starting `match_seq_num` is given, every batch carries one: that value on the first, then the previous batch's plus its record count.
+   - **a.** A `Batcher` batches records by the same rules, for `append()` or an `AppendSession` (see [Languages](#batcher)). It takes a sequence of records and gives a sequence of batches, each complete when it is full or when `linger` has passed since its first record arrived. Its options are those a Producer has for batching, plus `fencing_token` and a starting `match_seq_num` (A3b). A record over 1 MiB or `max_batch_bytes` ends its output with `ValidationError`. When its input ends, it gives any partial batch at once.
 6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. On success, an `AppendSession`'s ticket gives the batch's ack, and a Producer's gives a `RecordAck`: the record's own `seq_num`, and `batch`, its batch's ack. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
    - **a.** If the final error came from the server, it belongs to the oldest unacked batch, provided that batch was sent in the final attempt: that batch was **rejected**. On an abort, no batch is rejected, and `AbortedError` takes the place of the final error. Each batch gets the first row that fits:
 
@@ -304,8 +305,8 @@ Every SDK has these settings, with these names and defaults (C2).
 | `retry_policy` | `ReadSession` | `budgeted` |
 | `max_unacked_bytes` | `AppendSession`, `Producer` | 5 MiB (minimum 1 MiB) |
 | `max_unacked_batches` | `AppendSession` | none |
-| `linger` | `Producer` | 5 ms |
-| `max_batch_records`, `max_batch_bytes` | `Producer` | 1000 records, 1 MiB (also the maximum) |
+| `linger` | `Producer`, `Batcher` | 5 ms |
+| `max_batch_records`, `max_batch_bytes` | `Producer`, `Batcher` | 1000 records, 1 MiB (also the maximum) |
 
 Constants are fixed, and stated in the rule they belong to. This table only gathers them.
 
@@ -356,6 +357,17 @@ Go splits `submit()` (A4) in two, and Rust may.
 | TypeScript | `submit()` | in `submit()` |
 | Go | `Submit()`, then `Wait()` on what it returns, which waits for capacity and gives the ticket | in `Submit()` |
 | Rust | `submit()`; or `reserve()`, which waits for capacity for a given size, then the permit's `submit()`, which accepts at once and gives the ticket | in `submit()`; when split, `reserve()` checks the size it reserves, and the permit's `submit()` checks the rest, releasing the reservation if it fails. A batch larger than its reservation is invalid. |
+
+### Batcher
+
+A `Batcher` (A5a) is a stream transform, in each language's idiom.
+
+| | Shape (A5a) |
+|---|---|
+| Python | `Batcher(records, ...)`, an async iterable of batches over an async iterable of records |
+| TypeScript | `Batcher`, a `TransformStream` from records to batches |
+| Go | `Batcher`: `Add()` each record and `Close()` at the end; batches arrive on `Batches()` |
+| Rust | `Batcher`, a `Stream` of batches over a `Stream` of records |
 
 ### Ending a session
 
