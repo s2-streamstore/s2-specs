@@ -87,7 +87,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
 ## E. Errors
 
 1. **Server errors.** A `ServerError` exposes its HTTP status, and its code and message when the body has them, exactly as returned. Status and code are the contract; the message is for people and is never parsed. Two kinds have types of their own, named for what happened rather than for their status. Each is also a `ServerError`, in each language's way (see [Languages](#errors)):
-   - **a.** A `412` is a `SeqNumMismatchError` with `expected_seq_num`, or a `FencingTokenMismatchError` with `expected_fencing_token`.
+   - **a.** A `412` is a `SeqNumMismatchError` with `assignable_seq_num`, the sequence number the stream would assign next, or a `FencingTokenMismatchError` with `current_fencing_token`, the stream's fencing token.
    - **b.** A `416` is a `ReadUnwrittenError` with the stream's `tail`.
 2. **SDK errors.** Only a `ServerError` carries a status. The SDK's own errors are told apart by type:
 
@@ -117,6 +117,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **d.** For an SDK error, both come from the table in E2.
 6. **Messages.** Every error's message names the call it came from, and the basin and stream that call was for, if any.
 7. **Unobserved errors.** An error the caller never awaits, such as a ticket's or that of `caught_up()`, reports nothing: no unhandled-rejection or unretrieved-exception warning, and no log above debug.
+8. **Base type.** Every error the SDK raises, a `ServerError` included, is an `S2Error`, in each language's way (see [Languages](#errors)), so a caller can catch them all with one type.
 
 ## T. Retries, timeouts and cancelling
 
@@ -173,7 +174,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **b.** Records are ordered by acceptance.
    - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing. One still waiting when the session starts closing or closes, or made after, fails at once with `SessionClosedError`; `flush()` and `close()` never do.
 5. **Batching.** A Producer sends a batch when it is full, or when `linger` has passed since its first record was accepted, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. When a starting `match_seq_num` is given, every batch carries one: that value on the first, then the previous batch's plus its record count.
-6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. On success, an `AppendSession`'s ticket gives the batch's ack, and a Producer's gives an `IndexedAppendAck`: the record's own `seq_num`, and `batch`, its batch's ack. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
+6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. On success, an `AppendSession`'s ticket gives the batch's ack, and a Producer's gives a `RecordAck`: the record's own `seq_num`, and `batch`, its batch's ack. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
    - **a.** If the final error came from the server, it belongs to the oldest unacked batch, provided that batch was sent in the final attempt: that batch was **rejected**. On an abort, no batch is rejected, and `AbortedError` takes the place of the final error. Each batch gets the first row that fits:
 
      | Batch | Outcome |
@@ -372,18 +373,18 @@ A unary call, or a wait on a session (T7).
 
 ### Errors
 
-| | An error the spec names `XError` (E2) | A typed server error (E1) | A wrapper's cause, besides its accessor (E3b) | The cause `AbortedError` carries (A8d) |
-|---|---|---|---|---|
-| Python | class `XError` | a subclass of `ServerError` | `__cause__` | the exception |
-| TypeScript | class `XError` | a subclass of `ServerError` | `cause` | `signal.reason` |
-| Go | type `*XError`, matched with `errors.As` | a type that `errors.As` also matches as `*ServerError` | none: the inner error stays out of the `Unwrap` chain | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds |
-| Rust | variant `X` of the call's error enum | a variant of the call's error enum that carries the `ServerError` | `source()` | none |
+| | An error the spec names `XError` (E2) | The base type (E8) | A typed server error (E1) | A wrapper's cause, besides its accessor (E3b) | The cause `AbortedError` carries (A8d) |
+|---|---|---|---|---|---|
+| Python | class `XError` | class `S2Error`, which every error class extends | a subclass of `ServerError` | `__cause__` | the exception |
+| TypeScript | class `XError` | class `S2Error`, which every error class extends | a subclass of `ServerError` | `cause` | `signal.reason` |
+| Go | type `*XError`, matched with `errors.As` | interface `S2Error`, which every error type implements | a type that `errors.As` also matches as `*ServerError` | none: the inner error stays out of the `Unwrap` chain | the context error, in the `Unwrap` chain, so `errors.Is(err, context.Canceled)` holds |
+| Rust | variant `X` of the call's error enum | `S2Error`, which every call's error enum converts into | a variant of the call's error enum that carries the `ServerError` | `source()` | none |
 
 A wrapper's inner error can be its cause in Python, TypeScript and Rust because `except`, `instanceof` and `match` do not follow causes. Go's `errors.Is` and `errors.As` do follow `Unwrap`, so a Go wrapper does not unwrap to its inner error. `AbortedError` is not a wrapper (E3a names the two), so its cause can stay in Go's `Unwrap` chain.
 
 ### TypeScript stream adapters
 
-An `AppendSession` or `Producer` also offers `writable`, which takes what `submit()` takes, and `readable`, which yields acks. A write is a `submit()` (A4), and closing `writable` is `close()` (A8a). Aborting `writable`, or cancelling `readable` (as leaving a `for await` over it early does), aborts the session (A8c). On failure, `readable` errors with the failure.
+An `AppendSession` or `Producer` also offers `writable`, which takes what `submit()` takes, and `readable`, which yields acks. A write is a `submit()` (A4). Closing `writable`, or cancelling `readable` (as leaving a `for await` over it early does), is `close()` (A8a): the session stops accepting, and what it already accepted still gets its outcome. Aborting `writable` aborts the session (A8c). On failure, `readable` errors with the failure.
 
 ## Conformance
 

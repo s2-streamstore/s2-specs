@@ -32,12 +32,13 @@ Every reason below argues from the spec's four standards: correctness, elegance,
 
 ## E. Errors
 
-- **E1.** The `412` and `416` errors are the server errors callers handle most, so each gets a type. They are named for what happened, not for the HTTP status: `ReadUnwrittenError` rather than `RangeNotSatisfiableError`, to match `SeqNumMismatchError` and `FencingTokenMismatchError`.
+- **E1.** The `412` and `416` errors are the server errors callers handle most, so each gets a type. They are named for what happened, not for the HTTP status: `ReadUnwrittenError` rather than `RangeNotSatisfiableError`, to match `SeqNumMismatchError` and `FencingTokenMismatchError`. The `412` fields hold the stream's values, so they are named for them, in the docs' words: `current_fencing_token` and `assignable_seq_num`. "Expected", as three SDKs had it, reads as the value the caller sent.
 - **E2.** Only a `ServerError` carries a status, and SDK errors are told apart by type. An SDK error with a made-up status (TypeScript's `499`) or code (Go's `VALIDATION`) can be mistaken for one from the server.
 - **E3.** A retried append can fail definitely on its last attempt after an earlier attempt took effect. Reporting the bare definite error would tell the caller "not appended" when that is unknown. The wrapper does not match as its inner error's type, so code that catches `SeqNumMismatchError` to mean "nothing was appended" is not misled. Go keeps the inner error out of the `Unwrap` chain because `errors.As` follows it. The type was `AppendIndefiniteFailureError`; the new name is shorter, and says that the append's outcome is indefinite.
 - **E4.** The closed error is its own type, so a caller can tell "this request was dropped because the session closed" from the error that closed it, which `failure` holds.
 - **E5.** `is_retryable` has one meaning: the cause may be temporary. Whether repeating is safe is `has_no_side_effects`. An earlier table mixed the two, so a wrapped append error said "not retryable" while an unwrapped indefinite `503` said "retryable", though both were as unsafe to repeat. A code at an unexpected status, or no code at all (as from a load balancer), falls back to the status, since the code cannot be trusted. A `412`'s body names the expected value rather than a code, so the error-code table cannot classify it, and E5c makes it definite directly. "Definite" and `has_no_side_effects` name one idea twice: the spec needs a short word, and callers a descriptive one; renaming the predicate would cost every SDK a change for no gain in meaning.
 - **E7.** In Node, an unhandled rejection can end the process, and Python's asyncio logs an error for an exception nobody retrieved. A caller who ignores tickets and relies on `close()` should see neither.
+- **E8.** A caller that handles every S2 error the same way, say by logging it and moving on, needs one type to catch. Each SDK had one, but not every error derived from it. Go spells the base as an interface, since its error types are separate structs.
 
 ## T. Retries, timeouts and cancelling
 
@@ -55,7 +56,7 @@ Every reason below argues from the spec's four standards: correctness, elegance,
 - **A2.** Each limit is one the server enforces, except a Producer's `max_batch_bytes`, which a larger record could never fit in. Checking first gives the caller a `ValidationError` before anything is sent, and never closes a session over one bad record.
 - **A3.** Opening an append session does not connect, because it has nothing to send. An idle connection that drops then costs nothing, and the first error a caller sees comes through a ticket or `close()`, like every later one.
 - **A3b.** A Producer creates and owns its session. When the caller supplied the session, two parties could close it, and the spec needed a rule for a caller closing the Producer's session behind its back.
-- **A6.** One table decides every batch's outcome, so every SDK reports the same thing for the same error. The example after A9 is the check. A Producer's ticket gives the record's own `seq_num` because that, not the batch's, is what a caller of `submit()` wants.
+- **A6.** One table decides every batch's outcome, so every SDK reports the same thing for the same error. The example after A9 is the check. A Producer's ticket gives the record's own `seq_num` because that, not the batch's, is what a caller of `submit()` wants. Its type is `RecordAck`, not `IndexedAppendAck` as three SDKs had it: it has no index, and it pairs with the batch's `AppendAck`.
 - **A6c.** `SessionClosedError` for batches behind a definite rejection is true only because the server appends nothing after such a rejection. TypeScript's fetch transport has no server-side session, so it gives the guarantee itself, by sending one batch at a time.
 - **A8c.** An idle append session's abort loses nothing, so it is a clean close. A read session's abort always fails iteration (R7d), because a clean finish would look like a stop condition to the code iterating it.
 
@@ -83,6 +84,11 @@ Every reason below argues from the spec's four standards: correctness, elegance,
 
 - **`linger`.** The 5 ms default matches the server's limit of 200 batches a second per stream and connection: a Producer whose batches are not full sends at most that many.
 - **`max_attempts`.** It counts the first try, so it is at least 1.
+
+## Languages
+
+- **TypeScript stream adapters.** Leaving a `for await` over acks early is how a caller stops watching acks, not a request to throw away appends, so cancelling `readable` closes the session gracefully, as the Producer already did. Aborting `writable` stays the way to abort.
+- **Python `async with`.** Leaving the block on an ordinary exception closes gracefully, so a bug in the body does not lose appends that were already accepted; the exception propagates once they have outcomes. Cancellation, `KeyboardInterrupt` and `GeneratorExit` abort, because the program is stopping.
 
 ## Server guarantees
 
