@@ -25,7 +25,7 @@ Every reason below argues from the spec's four standards: correctness, elegance,
 ## D. Data
 
 - **D1.** `AppendRecord` and `SequencedRecord` are the names three of the four SDKs already use for each.
-- **D2.** The API's timestamps are integer milliseconds, and a client may choose them, so they need not be wall-clock times. A date type implies a meaning, and conversions, that the API does not have.
+- **D2.** A record's timestamp is integer milliseconds, and a client may choose it, so it need not be a wall-clock time. A date type implies a meaning, and conversions, that the API does not have, and cannot hold every `u64` exactly; accepting one as input implies the same. Times the API gives as RFC 3339 date-times, such as `created_at`, are wall-clock times, so a date type fits them.
 - **D3.** A start is optional, as in the API, which begins at the tail; D4's reasoning applies. The `416` cases are the API's, stated here because `clamp` alone does not avoid one: with `wait` zero there is nothing at the tail to return.
 - **D4.** `wait` and the other stop options are the API's, with the API's defaults. The SDK leaves an option the caller did not set to the API rather than choosing its own default, so a read behaves the same through every SDK and through the API directly.
 - **D5.** `ignore_command_records` was removed. Filtering in the SDK hid where a read got to: a unary read whose records were all command records returned nothing, and the caller could not tell where to resume. Putting that back needed a `next_seq_num` the server does not send, with awkward cases of its own. `is_command_record()` makes filtering one line for the caller, and a read then always shows where it got to.
