@@ -228,6 +228,4 @@ A released SDK keeps working against a newer server.
 
 ## Revisions
 
-- **1.** Combines the error model (its revision 3) and the read session spec (its revision 2), and adds chapters C, T, D, L, F and G. Rules moved as follows:
-  - Error model: rules 1–6 are A1–A6, rule 7 is E4, and rules 8a–8c are E1–E3.
-  - Read session: rules 1–6 are R1–R6, except that the heartbeat rule 5d is now T5d and the closed-error rule 6c is E4.
+- **1.** Initial version.
