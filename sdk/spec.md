@@ -155,7 +155,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
 
 ## A. Appending
 
-`append()`, and two ways to append continuously: `AppendSession`, which takes batches, and `Producer`, which takes records, batches them, and owns an `AppendSession` (A8e). Rules A3 to A9 cover both, called sessions in this chapter; where they differ, the rule names one.
+`append()`, and two ways to append continuously: `AppendSession`, which takes batches, and `Producer`, which takes records, batches them, and owns an `AppendSession` (A3b). Rules A3 to A9 cover both, called sessions in this chapter; where they differ, the rule names one.
 
 1. **Unary append.** `append()` sends one batch and returns its ack, retrying as `append_retry_policy` says (T2c). An ack holds three positions: `start`, the first record appended; `end`, one past the last record appended; and `tail`, the stream's tail, which is past `end` when others appended at the same time. A session's acks hold the same three.
 2. **Validation.** `append()` and `submit()` check a record or batch before anything else: before sending, and before waiting for capacity. An invalid one fails with `ValidationError`; nothing is accepted, and the session stays open. These are invalid:
@@ -164,13 +164,14 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **c.** a fencing token over 36 bytes, on a batch, in `fence()`, or in a Producer's options, which are checked when it opens.
 3. **Opening.** A session is opened from a stream handle, with its options. Opening does not connect: the session connects when it has a batch to send. A connection that ends while nothing is unacked uses no budget and is not an error; the session connects again when it next has a batch to send. An error on any attempt, the first included, is handled as T1 says, and reaches the caller through tickets and the session's failure.
    - **a.** An `AppendSession`'s options are `max_unacked_bytes` and `max_unacked_batches`.
-   - **b.** A `Producer`'s options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It opens the `AppendSession` it owns.
+   - **b.** A `Producer`'s options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, and `max_unacked_bytes`. It opens the `AppendSession` it owns, and closing or aborting the Producer closes or aborts that session.
 4. **Acceptance.** `submit()` waits until there is capacity for the record or batch, then accepts it and returns a ticket. Where an SDK splits it in two (see [Languages](#accepting-a-record-or-batch)), a rule about `submit()` applies to the pair.
    - **a.** Capacity is `max_unacked_bytes` and, on an `AppendSession`, `max_unacked_batches`. An accepted record counts against it until its batch has an outcome, including while a Producer is still batching it. Capacity is granted first come, first served.
    - **b.** Records are ordered by acceptance.
    - **c.** `submit()` never half-accepts. A cancelled `submit()` accepted nothing. One still waiting when the session starts closing or closes, or made after, fails at once with `SessionClosedError`; `flush()` and `close()` never do.
-5. **Batching.** A Producer sends a batch when it is full, or when `linger` has passed since its first record was accepted, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. When a starting `match_seq_num` is given, every batch carries one: that value on the first, then the previous batch's plus its record count.
-   - **a.** A `Batcher` batches records by the same rules, for `append()` or an `AppendSession` (see [Languages](#batcher)). It takes a sequence of records and gives a sequence of batches, each complete when it is full or when `linger` has passed since its first record arrived. Its options are those a Producer has for batching, plus `fencing_token` and a starting `match_seq_num` (A3b). A record over 1 MiB or `max_batch_bytes` ends its output with `ValidationError`. When its input ends, it gives any partial batch at once.
+5. **Batching.** A Producer batches the records it accepts, and a `Batcher` batches records for `append()` or an `AppendSession`, both by these rules. A batch is complete when it is full, or when `linger` has passed since its first record arrived, whichever comes first. A batch never exceeds `max_batch_records` or `max_batch_bytes`. The fencing token goes on every batch. When a starting `match_seq_num` is given, every batch carries one: that value on the first, then the previous batch's plus its record count.
+   - **a. Producer.** A record arrives when it is accepted (A4), and a complete batch is sent at once.
+   - **b. `Batcher`.** It takes a sequence of records and gives a sequence of batches (see [Languages](#batcher)). Its options are those a Producer has for batching, plus `fencing_token` and a starting `match_seq_num` (A3b). A record over 1 MiB or `max_batch_bytes` ends its output with `ValidationError`. When its input ends, it gives any partial batch at once.
 6. **Outcomes.** Each batch has one outcome, shared by its records: a batch is atomic, so each record gets its batch's outcome. On success, an `AppendSession`'s ticket gives the batch's ack, and a Producer's gives a `RecordAck`: the record's own `seq_num`, and `batch`, its batch's ack. An outcome never changes; where a ticket can be awaited more than once, every await gives the same outcome.
    - **a.** If the final error came from the server, it belongs to the oldest unacked batch, provided that batch was sent in the final attempt: that batch was **rejected**. On an abort, no batch is rejected, and `AbortedError` takes the place of the final error. Each batch gets the first row that fits:
 
@@ -189,9 +190,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
 8. **Closing.** A session closes for one of three reasons.
    - **a. The caller.** `close()` makes the session closing: it stops accepting, sends any partial batch, and waits until everything accepted has an outcome. The session then closes, and `close()` returns, or fails with the failure. Every call to `close()` that completes gives the same result.
    - **b. A failure.** The final error closes the session at once, closing or not, and every batch gets its outcome (A6).
-   - **c. An abort.** Closing the client (C8), or a trigger that depends on the language (see [Languages](#ending-a-session)), closes the session at once, closing or not, and every batch gets its outcome (A6). The session's failure is an indefinite `AbortedError`, unless no batch was awaiting an outcome: then nothing was lost, and the close is clean. Cancelling any other call only stops that call's wait (T7).
-   - **d. Cause.** `AbortedError` carries what triggered the abort as its cause, in languages where errors have causes.
-   - **e. Ownership.** A Producer owns its session: closing or aborting the Producer closes or aborts the session.
+   - **c. An abort.** Closing the client (C8), or a trigger that depends on the language (see [Languages](#ending-a-session)), closes the session at once, closing or not, and every batch gets its outcome (A6). The session's failure is an indefinite `AbortedError`, unless no batch was awaiting an outcome: then nothing was lost, and the close is clean. `AbortedError` carries what triggered the abort as its cause, in languages where errors have causes. Cancelling any other call only stops that call's wait (T7).
 9. **Failure.** A session's failure is its final error, wrapped if it is definite and any batch's outcome was wrapped (A6b), or `AbortedError` (A8c). A Producer's failure is that of the session it owns, or `AbortedError`.
 
 **Example.** A session accepted batches A, B and C, in that order. A and B were sent; C was not. In each row, the last error is final: it was not retried. "closed" is `SessionClosedError`, `412` is either error of E1a, "aborted" is `AbortedError`, and `Indefinite(x)` is `IndefiniteAppendError` holding `x`.
@@ -215,10 +214,10 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **a.** Batches are how the server ships records, and carry no meaning. An SDK may also offer a batch view; it delivers each batch whole, never an empty one, and every rule here applies to it per batch. Heartbeats change state (R5), not what is delivered.
    - **b.** The session decodes at most one batch ahead of the one being delivered. Any further read-ahead is the transport's flow control.
    - **c.** Iteration has one consumer. The accessors in R5 are safe to call from anywhere, at any time, and never block.
-5. **State.** Three accessors. They are updated before a record is handed over, so code that receives it already sees its effect.
+5. **State.** Three accessors. They are updated before a record is handed over, so code that receives it already sees its effect. After iteration ends, they keep their last values, except `is_caught_up` (R5c).
    - **a. `next_seq_num`.** One past the last record delivered, or the start before any is. A `seq_num` start that is not clamped is known at once; any other start is resolved by the first response, to its first record's sequence number or else its tail (R9b), and until then `next_seq_num` is unknown. When delivery reaches a heartbeat, `next_seq_num` moves up to its tail: the server had nothing to send before it. Records removed by trimming or retention are absent, so it can jump. A new session started at `next_seq_num` delivers what this one would have delivered next.
    - **b. `last_observed_tail`.** The latest tail the server has reported, whether or not the session has delivered up to it. It never moves backward, and survives reconnects. `last_observed_tail.seq_num - next_seq_num` is a lower bound on how far behind the caller is.
-   - **c. `is_caught_up`.** True while the session is connected and the last thing the server reported on that connection is a tail equal to `next_seq_num`: everything up to a reported tail has been delivered, and nothing newer is known. A connection that ends on a stop condition counts as connected until iteration ends, so its last record can still catch the session up.
+   - **c. `is_caught_up`.** True while the session is connected and the last thing the server reported on that connection is a tail equal to `next_seq_num`: everything up to a reported tail has been delivered, and nothing newer is known. A connection that ends on a stop condition counts as connected until iteration ends, so its last record can still catch the session up. Once iteration ends, it is false.
 6. **Catching up.** `caught_up()` returns a future that resolves once the session is caught up: at once if it is now, or else the next time it is.
    - **a.** It resolves with the tail the session caught up to, and its value never changes.
    - **b.** It does not read: the caller keeps iterating while it is pending.
@@ -228,8 +227,7 @@ Every error that reaches the caller says what is safe to do next: `has_no_side_e
    - **a. A stop condition.** `count`, `bytes` or `until` was reached, or `wait` ran out, as the server reports by ending its response. Iteration finishes with no error. A response that ends when no stop condition could have been met is a lost connection (`ConnectionLostError`), handled as T1 says.
    - **b. The caller.** The caller closes the session (see [Languages](#ending-a-session)). A wait for the next record that is pending then, or made after, fails with `SessionClosedError` (E4): only a stop condition ends iteration cleanly. In TypeScript, a read after `cancel()` ends as the Streams standard says. Cancelling a wait for the next record only stops that wait: nothing is lost, and the session stays open.
    - **c. A failure.** Every record already fetched is delivered first; then iteration fails with the failure, once, and then finishes.
-   - **d. An abort.** Something outside the code that iterates the session aborts it: closing the client (C8), or the session's own abort where the language has one (see [Languages](#ending-a-session)). Records fetched but not delivered are dropped, and iteration fails with `AbortedError` (A8d), even when nothing was fetched: finishing cleanly would look like a stop condition.
-   - **e.** After iteration ends, `next_seq_num` and `last_observed_tail` keep their last values, and `is_caught_up` is false, since the session is no longer connected (R5c).
+   - **d. An abort.** Something outside the code that iterates the session aborts it: closing the client (C8), or the session's own abort where the language has one (see [Languages](#ending-a-session)). Records fetched but not delivered are dropped, and iteration fails with `AbortedError` (A8c), even when nothing was fetched: finishing cleanly would look like a stop condition.
 8. **Failure.** A read session's failure is its final error, or `AbortedError` (R7d). A read has no side effects, so nothing is wrapped.
 9. **Reconnects.** They are invisible to iteration. T1, T4 and T5 decide when one happens.
    - **a.** The session resumes at the first record it has not fetched, so nothing is repeated and nothing is missed.
@@ -360,9 +358,9 @@ Go splits `submit()` (A4) in two, and Rust may.
 
 ### Batcher
 
-A `Batcher` (A5a) is a stream transform, in each language's idiom.
+A `Batcher` (A5b) is a stream transform, in each language's idiom.
 
-| | Shape (A5a) |
+| | Shape (A5b) |
 |---|---|
 | Python | `Batcher(records, ...)`, an async iterable of batches over an async iterable of records |
 | TypeScript | `Batcher`, a `TransformStream` from records to batches |
@@ -391,7 +389,7 @@ A unary call, or a wait on a session (T7).
 
 ### Errors
 
-| | An error the spec names `XError` (E2) | The base type (E8) | A typed server error (E1) | A wrapper's cause, besides its accessor (E3b) | The cause `AbortedError` carries (A8d) |
+| | An error the spec names `XError` (E2) | The base type (E8) | A typed server error (E1) | A wrapper's cause, besides its accessor (E3b) | The cause `AbortedError` carries (A8c) |
 |---|---|---|---|---|---|
 | Python | class `XError`; `TimeoutError` also extends the builtin `TimeoutError` | class `S2Error`, which every error class extends | a subclass of `ServerError` | `__cause__` | the exception |
 | TypeScript | class `XError` | class `S2Error`, which every error class extends | a subclass of `ServerError` | `cause` | `signal.reason` |
