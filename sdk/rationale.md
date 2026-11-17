@@ -70,4 +70,4 @@ The spec's core is one chain of ideas: attempt, definite, final error, wrapped, 
 
 ## Server guarantees
 
-Several rules are correct only if the server behaves a certain way. Listing those guarantees in one place makes them a contract the server can test, and shows which are not yet written down.
+Several rules are correct only if the server behaves a certain way. Listing those guarantees in one place, each with its source, makes them easy to check when the server changes.

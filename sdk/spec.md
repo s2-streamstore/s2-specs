@@ -303,21 +303,20 @@ Constants are fixed, and stated in the rule they belong to. This table only gath
 
 ## Server guarantees
 
-Some rules are correct only because the server behaves a certain way. These are those guarantees, the rules that rely on them, and their source. One stated nowhere in this repo should be, in [`openapi.json`](../s2/v1/openapi.json) or [`s2s.md`](../s2/v1/s2s.md).
+Some rules are correct only because the server behaves a certain way. These are those guarantees, the rules that rely on them, and where each is documented, or else seen.
 
 | Guarantee | Relied on by | Source |
 |---|---|---|
-| A batch becomes durable whole, or not at all. | A6 | nowhere in this repo |
-| A session's acks arrive in the order its batches were sent, and an error that ends it concerns its oldest unacked batch. | A6a | nowhere in this repo |
-| Once the server rejects a batch with a definite error, no later batch in that session becomes durable. | A6c | nowhere in this repo |
-| An append session that stops sending after reconnect advice gets an ack for everything it sent, then a clean end. | T5a | `s2s.md` |
-| A session ended with `server_draining` sends every ack first; whatever it did not ack was never processed. | T5b | `s2s.md` |
-| A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | `s2s.md` |
-| An error the error-code table lists with no side effect had none; a `412` is checked before anything is appended. | Terms, E5a | [error-code table](https://s2.dev/docs/api/error-codes) |
-| Creating with a request token already used, and the same config, succeeds rather than conflicting. | T2b, M1 | s2-lite's behaviour |
-| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | s2-lite's behaviour; not in `openapi.json` |
-| Deleting a basin or stream that is already being deleted succeeds. | M4 | s2-lite's behaviour |
-| Revoking an access token that does not exist either succeeds or returns `404`. | M4 | nowhere in this repo; `openapi.json` lists no `404` |
+| A batch becomes durable whole, or not at all. | A6 | [Appends](https://s2.dev/docs/concepts/appends) |
+| A session's batches become durable in the order they were sent, and once one fails, no later batch does. | A6a, A6c | [Appends](https://s2.dev/docs/concepts/appends) |
+| An append session that stops sending after reconnect advice gets an ack for everything it sent, then a clean end. | T5a | [`s2s.md`](../s2/v1/s2s.md) |
+| A session ended with `server_draining` sends every ack first; whatever it did not ack was never processed. | T5b | [`s2s.md`](../s2/v1/s2s.md) |
+| A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | [`s2s.md`](../s2/v1/s2s.md) |
+| An error the error-code table lists with no side effect had none, a `412` included. | Terms, E5a | [Error codes](https://s2.dev/docs/api/error-codes) |
+| A create retried with the same request token does not conflict with its earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
+| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | seen in s2-lite |
+| Deleting a basin or stream that is already being deleted succeeds. | M4 | seen in s2-lite |
+| Revoking an access token that does not exist either succeeds or returns `404`. | M4 | to confirm |
 
 ## Languages
 
