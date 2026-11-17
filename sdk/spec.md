@@ -4,7 +4,7 @@
 
 What every S2 SDK (Python, TypeScript, Go, Rust) does. It describes where the SDKs are headed, not where each one is today.
 
-Every rule, and every choice the spec leaves to an SDK, is held to four standards: correctness, elegance, idiom and efficiency.
+Every rule, and every choice the spec leaves to an SDK, is held to four standards: correctness, elegance, idiom and efficiency. Why each rule says what it does is in [rationale.md](rationale.md), by rule id.
 
 **Reading the rules.**
 
@@ -25,7 +25,7 @@ Every rule, and every choice the spec leaves to an SDK, is held to four standard
 | F | Forward compatibility |
 | L | Logging |
 
-Terms come first. Settings and constants, Languages, Conformance and Revisions follow the chapters.
+Terms and the failure model come first. Settings and constants, Server guarantees, Languages, Conformance and Revisions follow the chapters.
 
 ## Terms
 
@@ -49,6 +49,18 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 - **Tail.** The position the server reports as the end of the stream: the sequence number the next record will get, and the timestamp of the last one. The server reports it with records near the end of the stream, and on its own as a **heartbeat** while a read session waits there.
 - **Delivered.** A record is delivered when iteration hands it to the caller. Records the SDK has fetched and is still holding are not delivered.
 
+## Failure model
+
+How the SDK handles a failure, told once. This section adds no rule; each step cites the rule that governs it.
+
+An operation makes one or more attempts. An attempt that fails has an error, which is definite if the attempt certainly had no side effect, and indefinite otherwise (Terms). The SDK repeats an attempt only when its error may be temporary, repeating it is safe, and the budget allows (T1). The error it stops on is the final error.
+
+A unary call returns its result, or fails with its final error. A definite final error speaks only for the last attempt: if an earlier attempt of an append may have taken effect, the append fails with `IndefiniteAppendError` holding it (E3).
+
+A session retries the same way, across connections. An append session gives every batch one outcome, its ack or an error, which the batch's records share (A6). Either kind of session closes once, and reports a failure if it ended on an error (A9, R7).
+
+Whatever error reaches the caller says what is safe to do next: `has_no_side_effects`, whether trying again could repeat an effect, and `is_retryable`, whether trying again could succeed (E5).
+
 ## C. Client
 
 1. **Construction.** A client is built from an access token and optional settings, and never reads the environment on its own. `from_env()` builds one from `S2_ACCESS_TOKEN`, `S2_ACCOUNT_ENDPOINT` and `S2_BASIN_ENDPOINT`.
@@ -62,7 +74,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 
 ## D. Data
 
-1. **Records.** A body is bytes. Headers are an ordered list of name and value pairs, both bytes. An SDK may add string conveniences on top.
+1. **Records.** An `AppendRecord` has a body, headers and an optional timestamp; the server decides the stored timestamp from it, as the stream's timestamping config says. A `SequencedRecord`, as read, has a body, headers, its `seq_num` and its `timestamp`. A body is bytes. Headers are an ordered list of name and value pairs, both bytes. An SDK may add string conveniences on top.
 2. **Numbers.** A sequence number is an integer. A timestamp is milliseconds since the Unix epoch, exposed as an integer and not as a date type. A position is a sequence number and a timestamp.
 3. **Read start.** Exactly one of `seq_num`, `timestamp` or `tail_offset`, in a type that cannot hold two. With `clamp`, a start beyond the tail reads from the tail. Without it, the read fails with `ReadUnwrittenError` (E1b).
 4. **Read stop.** Any of: `count` and `bytes` limits; `until`, a timestamp to stop before; and `wait`, how long to wait for new records. Their meaning and defaults are the API's, and the SDK leaves any the caller did not set to the API. So `wait` defaults to zero when `count`, `bytes` or `until` bounds the read, and otherwise waits forever. A unary read is always bounded, by the API's own limits if not the caller's, and waits at most 60 s. On a session, `wait` bounds the time between records.
@@ -182,7 +194,7 @@ Terms come first. Settings and constants, Languages, Conformance and Revisions f
 2. **Tail.** `check_tail()` returns the tail.
 3. **Iteration.** Iterating a session yields records, one at a time, in sequence-number order, each delivered once.
    - **a.** Batches are how the server ships records, and carry no meaning. An SDK may also offer a batch view; it delivers each batch whole, never an empty one, and every rule here applies to it per batch. Heartbeats change state (R4), not what is delivered.
-   - **b.** The session fetches ahead by a bounded amount, and no further until the caller takes records.
+   - **b.** The session decodes at most one batch ahead of the one being delivered. Any further read-ahead is the transport's flow control.
    - **c.** Iteration has one consumer. The accessors in R4 are safe to call from anywhere, at any time, and never block.
 4. **State.** Three accessors. A record's effect on them is visible before the record is delivered.
    - **a. `next_seq_num`.** One past the last record delivered, or the start before any is. A `seq_num` start that is not clamped is known at once; any other start is resolved by the first response, to its first record's sequence number or else its tail (R8b), and until then `next_seq_num` is unknown. Records removed by trimming or retention are absent, so it can jump. A new session started at `next_seq_num` delivers what this one would have delivered next.
@@ -287,6 +299,25 @@ Constants are fixed, and stated in the rule they belong to. This table only gath
 | Longest `wait` on a unary read | 60 s | D4 |
 | Shortest gap between acting on reconnect advice | 60 s | T5a |
 | Heartbeat timeout | 20 s | T6d |
+| Batches a read session decodes ahead of delivery | 1 | R3b |
+
+## Server guarantees
+
+Some rules are correct only because the server behaves a certain way. These are those guarantees, the rules that rely on them, and their source. One stated nowhere in this repo should be, in [`openapi.json`](../s2/v1/openapi.json) or [`s2s.md`](../s2/v1/s2s.md).
+
+| Guarantee | Relied on by | Source |
+|---|---|---|
+| A batch becomes durable whole, or not at all. | A6 | nowhere in this repo |
+| A session's acks arrive in the order its batches were sent, and an error that ends it concerns its oldest unacked batch. | A6a | nowhere in this repo |
+| Once the server rejects a batch with a definite error, no later batch in that session becomes durable. | A6c | nowhere in this repo |
+| An append session that stops sending after reconnect advice gets an ack for everything it sent, then a clean end. | T5a | `s2s.md` |
+| A session ended with `server_draining` sends every ack first; whatever it did not ack was never processed. | T5b | `s2s.md` |
+| A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | `s2s.md` |
+| An error the error-code table lists with no side effect had none; a `412` is checked before anything is appended. | Terms, E5a | [error-code table](https://s2.dev/docs/api/error-codes) |
+| Creating with a request token already used, and the same config, succeeds rather than conflicting. | T2b, M1 | s2-lite's behaviour |
+| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | s2-lite's behaviour; not in `openapi.json` |
+| Deleting a basin or stream that is already being deleted succeeds. | M4 | s2-lite's behaviour |
+| Revoking an access token that does not exist either succeeds or returns `404`. | M4 | nowhere in this repo; `openapi.json` lists no `404` |
 
 ## Languages
 
@@ -310,7 +341,7 @@ A wrapper's inner error can be its cause in Python, TypeScript and Rust because 
 
 ## Conformance
 
-An SDK conforms to a revision when it follows every rule in it. To make that checkable:
+An SDK conforms to a revision when it follows every rule in it. Each SDK's README names the revision it targets. To make conformance checkable:
 
 - Every testable rule has a test in each SDK, tagged with its id, such as `A6b`.
 - A rule without a tagged test counts as not yet met.
