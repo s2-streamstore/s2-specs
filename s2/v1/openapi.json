@@ -2797,6 +2797,18 @@
           }
         }
       },
+      "AwsPrivateNet": {
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "AWS PrivateLink endpoint service name, for creating a VPC endpoint."
+          }
+        }
+      },
       "AwsPrivateNetPolicy": {
         "type": "object",
         "required": [
@@ -3342,6 +3354,17 @@
             "$ref": "#/components/schemas/LocationName",
             "description": "Location name."
           },
+          "private_net": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrivateNet",
+                "description": "[Private networking](https://s2.dev/docs/platform/private-networking) details for the\naccount in this location, which can differ between accounts.\nOmitted until the account has a basin in this location, and when the location cannot be\nreached over a private network."
+              }
+            ]
+          },
           "storage_classes": {
             "type": [
               "array",
@@ -3609,6 +3632,24 @@
             "minimum": 0
           }
         }
+      },
+      "PrivateNet": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "AWS PrivateLink.",
+            "required": [
+              "aws"
+            ],
+            "properties": {
+              "aws": {
+                "$ref": "#/components/schemas/AwsPrivateNet",
+                "description": "AWS PrivateLink."
+              }
+            }
+          }
+        ],
+        "description": "How the account can reach a location over a private network. Exactly one kind applies."
       },
       "PrivateNetPolicy": {
         "oneOf": [
