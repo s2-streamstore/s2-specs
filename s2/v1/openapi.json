@@ -924,6 +924,19 @@
             "schema": {
               "$ref": "#/components/schemas/TimeseriesInterval"
             }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "Access token IDs, as a repeated parameter. Between 1 and 50 are required for the `token-activity` metric set.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50
+            }
           }
         ],
         "responses": {
@@ -1171,6 +1184,305 @@
             }
           },
           "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network-policies": {
+      "get": {
+        "tags": [
+          "network-policies"
+        ],
+        "summary": "List network policies.",
+        "operationId": "list_network_policies",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Filter to policies whose slugs begin with this prefix.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "start_after",
+            "in": "query",
+            "description": "Filter to policies whose slugs lexicographically start after this string.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results, up to a maximum of 1000.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "maximum": 1000,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListNetworkPoliciesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "network-policies"
+        ],
+        "summary": "Create a network policy.",
+        "operationId": "create_network_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNetworkPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkPolicyInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network-policies/{id}": {
+      "get": {
+        "tags": [
+          "network-policies"
+        ],
+        "summary": "Get a network policy by slug or full reference.",
+        "operationId": "get_network_policy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Network policy slug, or full `<slug>.<nonce>` reference.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkPolicyInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "network-policies"
+        ],
+        "summary": "Delete a network policy by slug or full reference. It must not be bound to any access token.",
+        "operationId": "delete_network_policy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Network policy slug, or full `<slug>.<nonce>` reference.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "409": {
             "description": "",
             "content": {
               "application/json": {
@@ -2235,6 +2547,17 @@
             "$ref": "#/components/schemas/AccessTokenIdStr",
             "description": "Access token ID."
           },
+          "network_policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkPolicyRef",
+                "description": "Network policy the token is restricted by, if any."
+              }
+            ]
+          },
           "scope": {
             "$ref": "#/components/schemas/AccessTokenScope",
             "description": "Access token scope."
@@ -2306,7 +2629,8 @@
         "enum": [
           "active-basins",
           "account-ops",
-          "estimated-billable-usage"
+          "estimated-billable-usage",
+          "token-activity"
         ]
       },
       "AccumulationMetric": {
@@ -2473,6 +2797,23 @@
           }
         }
       },
+      "AwsPrivateNetPolicy": {
+        "type": "object",
+        "required": [
+          "vpce_ids"
+        ],
+        "properties": {
+          "vpce_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VpcEndpointId"
+            },
+            "description": "AWS VPC endpoint IDs through which the token may be used.",
+            "maxItems": 32,
+            "minItems": 1
+          }
+        }
+      },
       "BasinConfig": {
         "type": "object",
         "properties": {
@@ -2611,6 +2952,10 @@
           "deleting"
         ]
       },
+      "Cidr": {
+        "type": "string",
+        "description": "IP network in CIDR notation, e.g. `203.0.113.0/24`."
+      },
       "CreateBasinRequest": {
         "type": "object",
         "required": [
@@ -2642,6 +2987,23 @@
                 "description": "Basin location.\nIf omitted when creating, uses the default location for the account."
               }
             ]
+          }
+        }
+      },
+      "CreateNetworkPolicyRequest": {
+        "type": "object",
+        "required": [
+          "slug",
+          "policy"
+        ],
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/NetworkPolicy",
+            "description": "The restriction. Policies are immutable; create a new one to change it."
+          },
+          "slug": {
+            "$ref": "#/components/schemas/NetworkPolicySlugStr",
+            "description": "Slug, unique to the account. Up to 96 characters of letters, digits, `-` and `_`."
           }
         }
       },
@@ -2825,6 +3187,17 @@
             "$ref": "#/components/schemas/AccessTokenIdStr",
             "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length, and must not\ncontain NUL bytes."
           },
+          "network_policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkPolicySelector",
+                "description": "Slug or full `<slug>.<nonce>` reference of a network policy to restrict the token by.\nA slug binds the token to the policy that currently holds it.\nIf the requestor's token is itself restricted, this must be omitted or name the same\npolicy, which the new token inherits."
+              }
+            ]
+          },
           "scope": {
             "$ref": "#/components/schemas/AccessTokenScope",
             "description": "Access token scope."
@@ -2902,6 +3275,27 @@
           "has_more": {
             "type": "boolean",
             "description": "Indicates that there are more basins that match the criteria."
+          }
+        }
+      },
+      "ListNetworkPoliciesResponse": {
+        "type": "object",
+        "required": [
+          "network_policies",
+          "has_more"
+        ],
+        "properties": {
+          "has_more": {
+            "type": "boolean",
+            "description": "Indicates that there are more network policies that match the criteria."
+          },
+          "network_policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkPolicyInfo"
+            },
+            "description": "Matching network policies.",
+            "maxItems": 1000
           }
         }
       },
@@ -3018,6 +3412,19 @@
                 "description": "Set of string labels."
               }
             }
+          },
+          {
+            "type": "object",
+            "description": "Named set of string attributes observed at a point in time.",
+            "required": [
+              "record"
+            ],
+            "properties": {
+              "record": {
+                "$ref": "#/components/schemas/RecordMetric",
+                "description": "Named set of string attributes observed at a point in time."
+              }
+            }
           }
         ]
       },
@@ -3043,6 +3450,75 @@
           "operations",
           "usd"
         ]
+      },
+      "NetworkPolicy": {
+        "type": "object",
+        "description": "What a token may be used from, per path. At least one of `public_net` and `private_net` must\nbe set.",
+        "properties": {
+          "private_net": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrivateNetPolicy",
+                "description": "Governs requests arriving through a private network.\nWhen omitted, the token cannot be used through a private network."
+              }
+            ]
+          },
+          "public_net": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PublicNetPolicy",
+                "description": "Governs requests arriving over the public path.\nWhen omitted, the token cannot be used over the public path."
+              }
+            ]
+          }
+        }
+      },
+      "NetworkPolicyInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "created_at",
+          "policy"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation time in RFC 3339 format."
+          },
+          "id": {
+            "$ref": "#/components/schemas/NetworkPolicyRef",
+            "description": "Full reference, `<slug>.<nonce>`, which access tokens are bound to."
+          },
+          "policy": {
+            "$ref": "#/components/schemas/NetworkPolicy",
+            "description": "The restriction."
+          },
+          "slug": {
+            "$ref": "#/components/schemas/NetworkPolicySlugStr",
+            "description": "Slug chosen at creation."
+          }
+        }
+      },
+      "NetworkPolicyRef": {
+        "type": "string",
+        "description": "Network policy reference, `<slug>.<nonce>`."
+      },
+      "NetworkPolicySelector": {
+        "type": "string",
+        "description": "Network policy slug, or full `<slug>.<nonce>` reference."
+      },
+      "NetworkPolicySlugStr": {
+        "type": "string",
+        "maxLength": 96,
+        "minLength": 1
       },
       "Operation": {
         "type": "string",
@@ -3070,7 +3546,11 @@
           "stream-metrics",
           "list-locations",
           "get-default-location",
-          "set-default-location"
+          "set-default-location",
+          "list-network-policies",
+          "create-network-policy",
+          "get-network-policy",
+          "delete-network-policy"
         ]
       },
       "PermittedOperationGroups": {
@@ -3129,6 +3609,45 @@
             "minimum": 0
           }
         }
+      },
+      "PrivateNetPolicy": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "AWS PrivateLink.",
+            "required": [
+              "aws"
+            ],
+            "properties": {
+              "aws": {
+                "$ref": "#/components/schemas/AwsPrivateNetPolicy",
+                "description": "AWS PrivateLink."
+              }
+            }
+          }
+        ],
+        "description": "Private networks a token may be used through. Exactly one kind applies."
+      },
+      "PublicNetPolicy": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Source addresses that may use the token. Between 1 and 32.",
+            "required": [
+              "cidrs"
+            ],
+            "properties": {
+              "cidrs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Cidr"
+                },
+                "description": "Source addresses that may use the token. Between 1 and 32."
+              }
+            }
+          }
+        ],
+        "description": "What a token may be used from over the public path. Exactly one kind applies."
       },
       "ReadBatch": {
         "type": "object",
@@ -3234,6 +3753,36 @@
             "type": "boolean",
             "description": "Write permission.",
             "default": false
+          }
+        }
+      },
+      "RecordMetric": {
+        "type": "object",
+        "required": [
+          "name",
+          "timestamp",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "object",
+            "description": "Named string attributes of the record.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "Record name."
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Timestamp of the record in Unix epoch seconds.",
+            "minimum": 0
           }
         }
       },
@@ -3587,6 +4136,10 @@
           }
         }
       },
+      "VpcEndpointId": {
+        "type": "string",
+        "description": "AWS VPC endpoint ID, e.g. `vpce-0a1b2c3d4e5f67890`."
+      },
       "u64": {
         "type": "integer",
         "format": "int64",
@@ -3618,6 +4171,10 @@
     {
       "name": "access-tokens",
       "description": "Manage access tokens"
+    },
+    {
+      "name": "network-policies",
+      "description": "Manage network policies"
     },
     {
       "name": "locations",
