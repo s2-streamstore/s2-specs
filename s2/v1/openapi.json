@@ -2803,6 +2803,13 @@
           "service_name"
         ],
         "properties": {
+          "private_dns_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Private DNS name of the endpoint service. With private DNS enabled on the VPC endpoint,\nit resolves to the endpoint, and can be used as the account endpoint so that account\nrequests also go over PrivateLink."
+          },
           "service_name": {
             "type": "string",
             "description": "AWS PrivateLink endpoint service name, for creating a VPC endpoint."
