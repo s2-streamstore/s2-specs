@@ -214,6 +214,16 @@
               }
             }
           },
+          "404": {
+            "description": "No access token exists with this ID (`access_token_not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
           "408": {
             "description": "",
             "content": {
@@ -242,7 +252,9 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": ""
+              "default": "",
+              "maxLength": 48,
+              "pattern": "^([a-z0-9][a-z0-9-]*)?$"
             }
           },
           {
@@ -252,7 +264,9 @@
             "required": false,
             "schema": {
               "type": "string",
-              "default": ""
+              "default": "",
+              "maxLength": 48,
+              "pattern": "^([a-z0-9][a-z0-9-]*)?$"
             }
           },
           {
@@ -339,18 +353,16 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BasinInfo"
-                }
-              }
-            }
-          },
           "201": {
-            "description": "",
+            "description": "The basin was created, or matched an earlier creation with the same `s2-request-token` and configuration.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "`created` if newly created, or `noop` on an idempotent retry with the same `s2-request-token`."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -488,6 +500,7 @@
           "basins"
         ],
         "summary": "Ensure a basin.",
+        "description": "Creates the basin if it does not exist. If it already exists, sets its configuration to match the request, with omitted fields taking their default values (unlike reconfigure, which leaves omitted fields unchanged).",
         "operationId": "ensure_basin",
         "parameters": [
           {
@@ -518,7 +531,15 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "The basin already existed and now matches the requested configuration.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "`updated` if the configuration changed, or `noop` if it already matched."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -528,7 +549,15 @@
             }
           },
           "201": {
-            "description": "",
+            "description": "The basin was created.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "Always `created`."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -538,6 +567,16 @@
             }
           },
           "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "403": {
             "description": "",
             "content": {
               "application/json": {
@@ -588,7 +627,7 @@
         ],
         "responses": {
           "202": {
-            "description": ""
+            "description": "Basin deletion has been initiated, or was already in progress."
           },
           "400": {
             "description": "",
@@ -1630,7 +1669,15 @@
         },
         "responses": {
           "201": {
-            "description": "",
+            "description": "The stream was created, or matched an earlier creation with the same `s2-request-token` and configuration.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "`created` if newly created, or `noop` on an idempotent retry with the same `s2-request-token`."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1790,6 +1837,7 @@
           "streams"
         ],
         "summary": "Ensure a stream.",
+        "description": "Creates the stream if it does not exist. If it already exists, sets its configuration to match the request, with omitted fields inheriting the basin's default stream configuration (unlike reconfigure, which leaves omitted fields unchanged).",
         "operationId": "ensure_stream",
         "parameters": [
           {
@@ -1820,7 +1868,15 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "The stream already existed and now matches the requested configuration.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "`updated` if the configuration changed, or `noop` if it already matched."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1830,7 +1886,15 @@
             }
           },
           "201": {
-            "description": "",
+            "description": "The stream was created.",
+            "headers": {
+              "s2-provision-result": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionResult"
+                },
+                "description": "Always `created`."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1910,7 +1974,7 @@
         ],
         "responses": {
           "202": {
-            "description": ""
+            "description": "Stream deletion has been initiated, or was already in progress."
           },
           "400": {
             "description": "",
@@ -2073,6 +2137,7 @@
           "records"
         ],
         "summary": "Read records.",
+        "description": "Starts at the tail when `seq_num`, `timestamp`, and `tail_offset` are all omitted.",
         "operationId": "read",
         "parameters": [
           {
@@ -2414,6 +2479,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AppendConditionFailed"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Append rate limit exceeded (`rate_limited`). No records were appended.",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
                 }
               }
             }
@@ -2921,7 +3006,8 @@
       "BasinNameStr": {
         "type": "string",
         "maxLength": 48,
-        "minLength": 8
+        "minLength": 8,
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
       },
       "BasinReconfiguration": {
         "type": "object",
@@ -3045,7 +3131,7 @@
           },
           "stream": {
             "$ref": "#/components/schemas/StreamNameStr",
-            "description": "Stream name that is unique to the basin.\nIt can be between 1 and 512 bytes in length, and must not contain NUL bytes."
+            "description": "Stream name that is unique to the basin.\nIt can be between 1 and 253 bytes in length, and must not contain NUL bytes."
           }
         }
       },
@@ -3107,6 +3193,28 @@
             ]
           }
         }
+      },
+      "ErrorEventData": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorInfo"
+          },
+          {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "integer",
+                "format": "int32",
+                "description": "HTTP status code of the error.",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "Payload of an SSE `error` event emitted when a streaming read terminates with an error, carrying the HTTP status code alongside the error details."
       },
       "ErrorInfo": {
         "type": "object",
@@ -3623,6 +3731,7 @@
       },
       "PingEventData": {
         "type": "object",
+        "description": "Heartbeat emitted while waiting at the tail for new records, sent only once all records before `tail` have been delivered.",
         "required": [
           "timestamp",
           "tail"
@@ -3675,6 +3784,15 @@
           }
         ],
         "description": "Private networks a token may be used through. Exactly one kind applies."
+      },
+      "ProvisionResult": {
+        "type": "string",
+        "description": "Outcome of a create or ensure operation, reported in the `s2-provision-result` response header.",
+        "enum": [
+          "created",
+          "updated",
+          "noop"
+        ]
       },
       "PublicNetPolicy": {
         "oneOf": [
@@ -3758,7 +3876,7 @@
             ],
             "properties": {
               "data": {
-                "type": "string"
+                "$ref": "#/components/schemas/ErrorEventData"
               },
               "event": {
                 "type": "string",
@@ -4044,7 +4162,7 @@
       },
       "StreamNameStr": {
         "type": "string",
-        "maxLength": 512,
+        "maxLength": 253,
         "minLength": 1
       },
       "StreamPosition": {
