@@ -3,6 +3,7 @@
 - OpenAPI specification
 - Protobuf messages
 - Session protocol (`s2s`)
+- [SDK spec](sdk/spec.md)
 
 The current API version is [v1](s2/v1).
 

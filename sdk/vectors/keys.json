@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {"rule": "C4", "name": "base64 text", "text": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", "expect": {"header": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="}},
+    {"rule": "C4", "name": "surrounding whitespace", "text": "  AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=\n", "expect": {"header": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="}},
+    {"rule": "C4", "name": "bytes", "bytes_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "expect": {"header": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="}},
+    {"rule": "C4", "name": "length is left to the server", "text": "+/8=", "expect": {"header": "+/8="}},
+    {"rule": "C4", "name": "not base64", "text": "!!!INVALID!!!", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "interior newline", "text": "AAECAwQFBgcICQoLDA0O\nDxAREhMUFRYXGBkaGxwdHh8=", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "interior space", "text": "AAECAwQFBgcICQoLDA0O DxAREhMUFRYXGBkaGxwdHh8=", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "missing padding", "text": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "URL-safe alphabet", "text": "-_8=", "expect": {"error": "ValidationError"}}
+  ]
+}
