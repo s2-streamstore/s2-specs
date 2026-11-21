@@ -160,8 +160,8 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
 
 | Event | `s2-attempt` |
 |---|---|
-| The session is opened and initiates its first request | 1 |
-| A batch is submitted and acked; the budget resets, and this request counts as attempt 1 | — |
+| A batch is submitted; the session opens its first request | 1 |
+| The batch is acked; the budget resets, and this request counts as attempt 1 | — |
 | Connection is lost; the session opens a new request after retry 0's delay | 2 |
 | That request breaks before any ack; the session opens a new request after retry 1's delay | 3 |
 | An ack arrives; the budget resets, and this request counts as attempt 1 | — |
@@ -180,7 +180,7 @@ This chapter covers unary `append()` and two continuous append abstractions: `Ap
    - **b.** an empty batch, a batch with more than 1000 records, or a batch exceeding 1 MiB;
    - **c.** a fencing token exceeding 36 bytes (on a batch, in `fence()`, or in a `Producer`'s options when opened);
    - **d.** a record timestamp or batch `match_seq_num` that violates D5.
-3. **Opening.** A session is opened from a stream handle with its options and initiates its first request immediately in the background without waiting for a response (matching R5). A response that ends cleanly while nothing is unacked is not an error and uses no budget (T9); the session opens a new request when the next batch is ready. An error on any attempt—including the first—is handled under T1 and surfaces through tickets and the session's failure.
+3. **Opening.** A session is opened from a stream handle with its options. Opening sends no request; the session opens its first request when it has a batch to send. A response that ends cleanly while nothing is unacked is not an error and uses no budget (T9); the session opens a new request when the next batch is ready. An error on any attempt—including the first—is handled under T1 and surfaces through tickets and the session's failure.
    - **a.** `AppendSession` options are `max_unacked_bytes`, `max_unacked_batches`, and an optional `stream_config` (C4).
    - **b.** `Producer` options are batching (`linger`, `max_batch_records`, `max_batch_bytes`), an optional `fencing_token`, an optional starting `match_seq_num`, `max_unacked_bytes`, and an optional `stream_config` (C4). The `Producer` opens and owns its `AppendSession`; closing or aborting the `Producer` closes or aborts that session.
 4. **Acceptance.** `submit()` waits until capacity is available for the record or batch, accepts it, and returns a ticket. Where an SDK splits acceptance into two steps (see [Languages](#accepting-a-record-or-batch)), rules about `submit()` apply to the pair.
@@ -437,7 +437,7 @@ Applies to unary calls and waits on a session (T8).
 
 ### TypeScript over `fetch`
 
-When TypeScript uses the `fetch` transport (C5), the runtime manages connection pooling, so moving to a different connection on handover (T6) holds only to the extent the runtime honors the server's `GOAWAY`. Because browsers hide redirect status codes, a redirect in a browser environment fails with `ProtocolError` rather than `ServerError` (C8). Because `fetch` has no server-side streaming append session, each batch is sent as its own request, so an append session over `fetch` does not send a request on open (A3).
+When TypeScript uses the `fetch` transport (C5), the runtime manages connection pooling, so moving to a different connection on handover (T6) holds only to the extent the runtime honors the server's `GOAWAY`. Because browsers hide redirect status codes, a redirect in a browser environment fails with `ProtocolError` rather than `ServerError` (C8).
 
 ## Conformance
 
