@@ -8,6 +8,9 @@
     {"rule": "C4", "name": "interior newline", "text": "AAECAwQFBgcICQoLDA0O\nDxAREhMUFRYXGBkaGxwdHh8=", "expect": {"error": "ValidationError"}},
     {"rule": "C4", "name": "interior space", "text": "AAECAwQFBgcICQoLDA0O DxAREhMUFRYXGBkaGxwdHh8=", "expect": {"error": "ValidationError"}},
     {"rule": "C4", "name": "missing padding", "text": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", "expect": {"error": "ValidationError"}},
-    {"rule": "C4", "name": "URL-safe alphabet", "text": "-_8=", "expect": {"error": "ValidationError"}}
+    {"rule": "C4", "name": "URL-safe alphabet", "text": "-_8=", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "empty text", "text": "", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "whitespace only", "text": "   \n", "expect": {"error": "ValidationError"}},
+    {"rule": "C4", "name": "empty bytes", "bytes_hex": "", "expect": {"error": "ValidationError"}}
   ]
 }
