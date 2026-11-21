@@ -1,21 +1,21 @@
 {
   "cases": [
-    {"rule": "C11", "basin": "my-basin", "expect": "valid"},
-    {"rule": "C11", "basin": "abcdefgh", "expect": "valid"},
-    {"rule": "C11", "basin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "valid"},
-    {"rule": "C11", "basin": "1abcdefg", "expect": "valid"},
-    {"rule": "C11", "basin": "0123456789", "expect": "valid"},
-    {"rule": "C11", "basin": "a-b-c-d-e", "expect": "valid"},
-    {"rule": "C11", "basin": "abcdefg", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "My-Basin", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "-abcdefgh", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "abcdefgh-", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "my_basin1", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "my.basin1", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "evil.com#", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "my basin", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "", "expect": "ValidationError"},
-    {"rule": "C11", "basin": "ábcdefgh", "expect": "ValidationError"}
+    {"rule": "C9", "basin": "my-basin", "expect": "valid"},
+    {"rule": "C9", "basin": "abcdefgh", "expect": "valid"},
+    {"rule": "C9", "basin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "valid"},
+    {"rule": "C9", "basin": "1abcdefg", "expect": "valid"},
+    {"rule": "C9", "basin": "0123456789", "expect": "valid"},
+    {"rule": "C9", "basin": "a-b-c-d-e", "expect": "valid"},
+    {"rule": "C9", "basin": "abcdefg", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "My-Basin", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "-abcdefgh", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "abcdefgh-", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "my_basin1", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "my.basin1", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "evil.com#", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "my basin", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "", "expect": "ValidationError"},
+    {"rule": "C9", "basin": "ábcdefgh", "expect": "ValidationError"}
   ]
 }

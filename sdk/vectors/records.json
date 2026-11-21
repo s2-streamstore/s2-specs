@@ -1,11 +1,11 @@
 {
   "cases": [
-    {"rule": "D6", "name": "empty", "record": {"body_hex": "", "headers": []}, "expect": {"metered_bytes": 8}},
-    {"rule": "D6", "name": "body only", "record": {"body_hex": "68656c6c6f", "headers": []}, "expect": {"metered_bytes": 13}},
-    {"rule": "D6", "name": "one header", "record": {"body_hex": "", "headers": [["61", "62"]]}, "expect": {"metered_bytes": 12}},
-    {"rule": "D6", "name": "command header", "record": {"body_hex": "", "headers": [["", ""]]}, "expect": {"metered_bytes": 10}},
-    {"rule": "D6", "name": "repeated header names", "record": {"body_hex": "78", "headers": [["6b", "7631"], ["6b", "7632"]]}, "expect": {"metered_bytes": 19}},
-    {"rule": "D6", "name": "multi-byte UTF-8 body", "record": {"body_hex": "c3a9", "headers": []}, "expect": {"metered_bytes": 10}},
+    {"rule": "D3", "name": "empty", "record": {"body_hex": "", "headers": []}, "expect": {"metered_bytes": 8}},
+    {"rule": "D3", "name": "body only", "record": {"body_hex": "68656c6c6f", "headers": []}, "expect": {"metered_bytes": 13}},
+    {"rule": "D3", "name": "one header", "record": {"body_hex": "", "headers": [["61", "62"]]}, "expect": {"metered_bytes": 12}},
+    {"rule": "D3", "name": "command header", "record": {"body_hex": "", "headers": [["", ""]]}, "expect": {"metered_bytes": 10}},
+    {"rule": "D3", "name": "repeated header names", "record": {"body_hex": "78", "headers": [["6b", "7631"], ["6b", "7632"]]}, "expect": {"metered_bytes": 19}},
+    {"rule": "D3", "name": "multi-byte UTF-8 body", "record": {"body_hex": "c3a9", "headers": []}, "expect": {"metered_bytes": 10}},
     {"rule": "A2a", "name": "record of exactly 1 MiB", "record": {"body_len": 1048568}, "expect": "valid"},
     {"rule": "A2a", "name": "record over 1 MiB", "record": {"body_len": 1048569}, "expect": "ValidationError"},
     {"rule": "A2b", "name": "empty batch", "batch": {"count": 0, "body_len": 0}, "expect": "ValidationError"},
@@ -15,6 +15,19 @@
     {"rule": "A2b", "name": "batch over 1 MiB", "batch": {"count": 2, "body_len": 524281}, "expect": "ValidationError"},
     {"rule": "A2c", "name": "fencing token of 36 bytes", "fencing_token": "éééééééééééééééééé", "expect": "valid"},
     {"rule": "A2c", "name": "fencing token over 36 bytes", "fencing_token": "ééééééééééééééééééé", "expect": "ValidationError"},
-    {"rule": "A2c", "name": "fencing token of 37 ASCII bytes", "fencing_token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "ValidationError"}
+    {"rule": "A2c", "name": "fencing token of 37 ASCII bytes", "fencing_token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expect": "ValidationError"},
+    {"rule": "D2", "name": "fence clear token", "fence": {"token": ""}, "expect": {"headers": [["", "66656e6365"]], "body_hex": ""}},
+    {"rule": "D2", "name": "fence ASCII token", "fence": {"token": "my-token"}, "expect": {"headers": [["", "66656e6365"]], "body_hex": "6d792d746f6b656e"}},
+    {"rule": "D2", "name": "fence UTF-8 token with timestamp", "fence": {"token": "é", "timestamp": "1767996832000"}, "expect": {"headers": [["", "66656e6365"]], "body_hex": "c3a9", "timestamp": "1767996832000"}},
+    {"rule": "D2", "name": "trim zero", "trim": {"seq_num": "0"}, "expect": {"headers": [["", "7472696d"]], "body_hex": "0000000000000000"}},
+    {"rule": "D2", "name": "trim small seq_num with timestamp", "trim": {"seq_num": "42", "timestamp": "1767996832000"}, "expect": {"headers": [["", "7472696d"]], "body_hex": "000000000000002a", "timestamp": "1767996832000"}},
+    {"rule": "D2", "name": "trim max safe integer", "trim": {"seq_num": "9007199254740991"}, "expect": {"headers": [["", "7472696d"]], "body_hex": "001fffffffffffff"}},
+    {"rule": "D2", "name": "trim max u64", "trim": {"seq_num": "18446744073709551615"}, "expect": {"if_representable": {"headers": [["", "7472696d"]], "body_hex": "ffffffffffffffff"}, "otherwise": "ValidationError"}},
+    {"rule": "D2", "name": "is_command_record no headers", "is_command_record": {"headers": []}, "expect": false},
+    {"rule": "D2", "name": "is_command_record normal header", "is_command_record": {"headers": [["6b", "76"]]}, "expect": false},
+    {"rule": "D2", "name": "is_command_record fence", "is_command_record": {"headers": [["", "66656e6365"]]}, "expect": true},
+    {"rule": "D2", "name": "is_command_record trim", "is_command_record": {"headers": [["", "7472696d"]]}, "expect": true},
+    {"rule": "D2", "name": "is_command_record unknown future command", "is_command_record": {"headers": [["", "667574757265"]]}, "expect": true},
+    {"rule": "D2", "name": "is_command_record extra header disqualifies", "is_command_record": {"headers": [["", "66656e6365"], ["6b", "76"]]}, "expect": false}
   ]
 }
