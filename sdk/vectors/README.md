@@ -20,7 +20,7 @@ A test runner skips any case its language's type system cannot express (such as 
 | `numbers.json` | A2d, C2, D5 | A `field` and its `value`, or `millis` for a duration | `valid`, `ValidationError`, or `valid_if_representable` (valid if the language's type represents the value accurately per D4, otherwise `ValidationError`) |
 | `records.json` | A2, D2, D3 | A `record`, a `batch` of `count` records with `body_len` bytes each, a batch `fencing_token`, a `fence` or `trim` command input, or an `is_command_record` record | `metered_bytes`, `valid`, `ValidationError`, encoded command `headers` and `body_hex` (or `if_representable`/`otherwise` per D4), or boolean `is_command_record` |
 | `errors.json` | C8, E2, E4 | The `call` kind (`append` for a call with side effects, or `read`) plus the response `status` and `body` | Error `type`, `status`, `code` (`null` if none), `message`, `is_retryable`, `has_no_side_effects`, and any typed payload; or `if_representable` / `otherwise` branches per D4 |
-| `s2s-frames.json` | C6, T9 | Raw `bytes` of a session response body | Decoded `messages` (each with payload and `reconnect_advised`), followed by stream termination: `clean`, `ServerError` (from a terminal frame), `ConnectionLostError`, or `ProtocolError` |
+| `s2s-frames.json` | C6, F1, T9 | Raw `bytes` of a session response body | Decoded `messages` (each with payload and `reconnect_advised`), followed by stream termination: `clean`, `ServerError` (from a terminal frame), `ConnectionLostError`, or `ProtocolError` |
 
 Notes:
 

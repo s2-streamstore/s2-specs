@@ -4,6 +4,7 @@
     {"rule": "T9", "name": "one message", "bytes": [{"hex": "00000500deadbeef"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}], "end": {"type": "clean"}}},
     {"rule": "T9", "name": "two messages", "bytes": [{"hex": "00000500deadbeef0000020001"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}, {"payload_hex": "01", "reconnect_advised": false}], "end": {"type": "clean"}}},
     {"rule": "T9", "name": "reconnect advice", "bytes": [{"hex": "00000510deadbeef"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": true}], "end": {"type": "clean"}}},
+    {"rule": "F1", "name": "reserved flag bits ignored", "bytes": [{"hex": "0000050fdeadbeef"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}], "end": {"type": "clean"}}},
     {"rule": "T9", "name": "terminal message", "bytes": [{"hex": "00000500deadbeef0000358001f77b22636f6465223a20227365727665725f647261696e696e67222c20226d657373616765223a2022647261696e696e67227d"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}], "end": {"type": "ServerError", "status": 503, "code": "server_draining"}}},
     {"rule": "T9", "name": "zero length", "bytes": [{"hex": "000000"}], "expect": {"messages": [], "end": {"type": "ProtocolError"}}},
     {"rule": "T9", "name": "terminal message without a status", "bytes": [{"hex": "00000180"}], "expect": {"messages": [], "end": {"type": "ProtocolError"}}},
