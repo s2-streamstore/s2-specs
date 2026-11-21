@@ -29,7 +29,7 @@ Rules in this specification—and choices left to individual SDKs—are guided b
 ## Terms
 
 - **Unary call, session.** A unary call is a single request and response. A session is a long-running append or read stream on a single S2 stream, which the SDK maintains across attempts.
-- **Connection.** A TCP connection (with TLS for HTTPS) over which requests travel. The client owns connections and shares them across requests (C12).
+- **Connection.** A TCP connection (with TLS for HTTPS) over which requests travel. The client owns connections and pools them across requests (C12, C13).
 - **Attempt.** One try at an operation: a single request and its response. For a session, an attempt is one streaming request on which the SDK sends batches, including any unacked batches sent on earlier attempts.
 - **Sent.** A request or batch is considered sent in an attempt once any of its bytes may have left the SDK during that attempt. Because an attempt sends nothing after it ends (T10), whether it sent a request or batch is settled by the time its error arrives.
 - **Ack.** The server's confirmation that an appended batch of records is durable.
@@ -75,6 +75,10 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
 10. **Inputs.** The SDK reads caller inputs at the time they are passed and never mutates them: settings when the client is constructed, and options, configs, and records when a call is made, a session is opened, or a record/batch is accepted. Subsequent mutations by the caller have no effect, including on retries and reconnected requests (see [Languages](#numbers-and-byte-inputs)).
 11. **Concurrency.** Clients, basin handles, stream handles, and sessions are safe to use concurrently across tasks or threads. The sole exception is iterating a read session, which is single-consumer (R6c).
 12. **Closing.** The client owns its connections; basin and stream handles merely reference the client. Every client provides `close()`. Calling `close()` aborts all sessions opened from the client (A8c, R9d) and fails all in-flight unary calls with `AbortedError`, since they may already have taken effect. It terminates all connections—including connections still being established—without waiting for the server, then returns. Repeated calls to `close()` are idempotent and return the same result. After `close()`, any call on the client or its handles fails immediately with `ClientClosedError`; calls on sessions it aborted follow A4c and R9. Dropping a client without calling `close()` keeps it alive while any session opened from it remains open.
+13. **Connection pooling.** Each client owns its HTTP/2 connection pools (C12), pooling connections per origin (scheme, host, and port) and reusing live connections across requests (an SDK may keep separate pools for unary calls and sessions). Retiring a connection (T6) or closing a dead connection removes only that connection from the pool, leaving healthy sibling connections to the same origin in use.
+    - **a. Concurrent stream limit.** Each pooled HTTP/2 connection carries at most `SETTINGS_MAX_CONCURRENT_STREAMS` concurrent requests (100 on S2), or a lower per-connection cap chosen by the SDK; before remote `SETTINGS` arrive, or when the transport does not expose them, the SDK caps each connection at 100 or fewer concurrent requests. When every live connection to an origin is at capacity or retiring (T6), a new request opens an additional connection rather than waiting for an active stream to finish or failing.
+    - **b. Keep-alive.** While a pooled HTTP/2 connection has active requests, the SDK sends an HTTP/2 `PING` after at most 20 s without receiving a frame. If no `PING` acknowledgment arrives within 10 s, the SDK closes the connection and removes it from the pool, handling active requests as a broken connection (T9).
+    - **c. Idle reaping.** A pooled connection with no active requests is closed and removed from the pool once it has been idle for 90 s. Retired connections still close as soon as their active requests finish (T6), without waiting for the idle timeout.
 
 ## D. Data
 
@@ -336,6 +340,10 @@ The following constants are fixed and defined by the cited rules:
 | Maximum batch size | 1000 records, 1 MiB | A2b |
 | Maximum fencing token length | 36 bytes | A2c |
 | Minimum session frame payload compressed | 1 KiB | C6 |
+| Concurrent stream limit per HTTP/2 connection (fallback) | 100 | C13a |
+| HTTP/2 keep-alive ping interval | 20 s | C13b |
+| HTTP/2 keep-alive ping timeout | 10 s | C13b |
+| Idle pooled connection timeout | 90 s | C13c |
 | Minimum interval between acting on reconnect advice | 60 s | T6a |
 | Read session heartbeat timeout | 20 s | T7d |
 | Maximum batches decoded ahead of delivery | 1 | R6b |
@@ -437,7 +445,7 @@ Applies to unary calls and waits on a session (T8).
 
 ### TypeScript over `fetch`
 
-When TypeScript uses the `fetch` transport (C5), the runtime manages connection pooling, so moving to a different connection on handover (T6) holds only to the extent the runtime honors the server's `GOAWAY`. Because browsers hide redirect status codes, a redirect in a browser environment fails with `ProtocolError` rather than `ServerError` (C8).
+When TypeScript uses the `fetch` transport (C5), the runtime manages connection pooling, keep-alive, and idle lifetimes, so C13 and moving to a different connection on handover (T6) hold only to the extent the runtime supports them. Because browsers hide redirect status codes, a redirect in a browser environment fails with `ProtocolError` rather than `ServerError` (C8).
 
 ## Conformance
 
