@@ -341,7 +341,7 @@ Constants are fixed, and stated in the rule they belong to. This table only gath
 
 ## Server guarantees
 
-Some rules are correct only because the server behaves a certain way. These are those guarantees, the rules that rely on them, and where each is documented, or else seen.
+Some rules are correct only because the server behaves a certain way. These are those guarantees, the rules that rely on them, and where each is documented.
 
 | Guarantee | Relied on by | Source |
 |---|---|---|
@@ -356,14 +356,14 @@ Some rules are correct only because the server behaves a certain way. These are 
 | A read session waiting at the tail gets a heartbeat at least every 15 s. | T6d | [`s2s.md`](../s2/v1/s2s.md) |
 | A heartbeat carries the tail, and is sent only when the server has nothing left to send before it. | R5a, R5c, R6 | [`s2s.md`](../s2/v1/s2s.md) |
 | With `wait` zero, a read that starts at the tail returns `416`. | R1, R9d | [Read](https://s2.dev/docs/api/records/read) |
-| A read with no start begins at the tail. | D3 | s2-lite; not yet documented |
+| A read with no start begins at the tail. | D3 | [`openapi.json`](../s2/v1/openapi.json) |
 | An error the error-code table lists with no side effect had none. | Terms, E5a | [`error-codes.json`](../s2/v1/error-codes.json) |
-| A unary call refused for its rate carries `retry-after-ms`. | T3 | the service; not yet documented |
+| A unary append refused for its rate carries `retry-after-ms`. | T3 | [`openapi.json`](../s2/v1/openapi.json) |
 | A create retried with the same request token does not conflict with its earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
-| Ensuring a basin or stream that exists makes its config the given one, with omitted fields at their defaults. | M2 | s2-lite; not yet documented |
-| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | s2-lite and the service; not yet documented |
-| Deleting a basin or stream that is already being deleted succeeds. | M4 | s2-lite and the service; not yet documented |
-| Revoking an access token that does not exist returns `404` with `access_token_not_found`. | M4 | the service; not yet documented |
+| Ensuring a basin or stream that exists makes its config the given one, with omitted fields at their defaults. | M2 | [`openapi.json`](../s2/v1/openapi.json) |
+| Ensure reports what it did in the `s2-provision-result` header: `created`, `updated` or `noop`. | M2 | [`openapi.json`](../s2/v1/openapi.json) |
+| Deleting a basin or stream that is already being deleted succeeds. | M4 | [`openapi.json`](../s2/v1/openapi.json) |
+| Revoking an access token that does not exist returns `404` with `access_token_not_found`. | M4 | [`openapi.json`](../s2/v1/openapi.json) |
 
 ## Languages
 
