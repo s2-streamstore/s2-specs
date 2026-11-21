@@ -349,7 +349,7 @@ Some rules are correct only because the server behaves a certain way. These are 
 | A session's batches become durable in the order they were sent, and once one fails, no later batch does. | A6a, A6c | [Appends](https://s2.dev/docs/concepts/appends) |
 | An append session over the append rate limit is slowed, not failed. | A4 | [Limits](https://s2.dev/docs/platform/limits) |
 | A `412` means the append condition did not hold, and nothing was appended. | Terms, E5e | [Concurrency control](https://s2.dev/docs/concepts/concurrency-control) |
-| Every session frame the server sends is within the limits `s2s.md` states. | C4, T9 | [`s2s.md`](../s2/v1/s2s.md) |
+| Every session frame the server sends is within the limits `s2s.md` states, and any valid batch fits within them. | A2, C4, T9 | [`s2s.md`](../s2/v1/s2s.md) |
 | An append session's response ends cleanly only once everything it received is acked. A read session's ends cleanly only on a stop condition or after reconnect advice. | T9, R7a | [`s2s.md`](../s2/v1/s2s.md) |
 | An append session that stops sending after reconnect advice gets an ack for everything it sent, then a clean end. | T5a | [`s2s.md`](../s2/v1/s2s.md) |
 | A session ended with `server_draining` sends every ack first; whatever it did not ack was never processed. | T5b | [`s2s.md`](../s2/v1/s2s.md) |

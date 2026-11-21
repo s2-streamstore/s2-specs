@@ -8,7 +8,7 @@
 
 _All integers use big-endian byte order. Messages smaller than 1KiB should not be compressed._
 
-**Length prefix** (3 bytes): Total message length (flag + body), at least 1 and at most 2 MiB
+**Length prefix** (3 bytes): Total message length (flag + body), at least 1 and at most 2.5 MiB
 
 **Flag byte** (1 byte): `[T][CC][A][RRRR]`
 - `T` (bit 7): Terminal flag (`1` = stream ends after this message)
@@ -20,7 +20,7 @@ _All integers use big-endian byte order. Messages smaller than 1KiB should not b
 - Regular message is a Protobuf
 - Terminal message contains a 2-byte status code, followed by JSON error information (corresponding to unary response behavior)
 
-A message's body decompresses to at most 2 MiB − 1 bytes. Either side treats a message past these limits as a protocol error. A terminal message is never compressed and never carries reconnect advice.
+A message's body decompresses to at most 2.5 MiB − 1 bytes, enough for any valid batch. Either side treats a message past these limits as a protocol error. A terminal message is never compressed and never carries reconnect advice.
 
 #### Data flow
 
