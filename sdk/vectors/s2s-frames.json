@@ -7,6 +7,7 @@
     {"rule": "F1", "name": "reserved flag bits ignored", "bytes": [{"hex": "0000050fdeadbeef"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}], "end": {"type": "clean"}}},
     {"rule": "T9", "name": "terminal message", "bytes": [{"hex": "00000500deadbeef0000358001f77b22636f6465223a20227365727665725f647261696e696e67222c20226d657373616765223a2022647261696e696e67227d"}], "expect": {"messages": [{"payload_hex": "deadbeef", "reconnect_advised": false}], "end": {"type": "ServerError", "status": 503, "code": "server_draining", "message": "draining"}}},
     {"rule": "E2", "name": "terminal message with empty body", "bytes": [{"hex": "0000038001f6"}], "expect": {"messages": [], "end": {"type": "ServerError", "status": 502, "code": null, "message": "502"}}},
+    {"rule": "F1", "name": "terminal message ignores non-terminal flag bits", "bytes": [{"hex": "000003f001f6"}], "expect": {"messages": [], "end": {"type": "ServerError", "status": 502, "code": null, "message": "502"}}},
     {"rule": "E2", "name": "terminal message with non-UTF-8 body", "bytes": [{"hex": "0000058001f6ffff"}], "expect": {"messages": [], "end": {"type": "ServerError", "status": 502, "code": null, "message": "502"}}},
     {"rule": "E2", "name": "terminal message with zero status", "bytes": [{"hex": "000003800000"}], "expect": {"messages": [], "end": {"type": "ProtocolError"}}},
     {"rule": "E2", "name": "terminal message with 1xx status", "bytes": [{"hex": "000003800064"}], "expect": {"messages": [], "end": {"type": "ProtocolError"}}},
