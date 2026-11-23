@@ -16,6 +16,8 @@
     {"rule": "C3", "name": "unsupported scheme", "endpoints": {"account": "ftp://example.com", "basin": "ftp://example.com"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
     {"rule": "C3", "name": "different schemes", "endpoints": {"account": "http://example.com", "basin": "https://example.com"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
     {"rule": "C3", "name": "placeholder with an IP address", "endpoints": {"account": "127.0.0.1", "basin": "{basin}.127.0.0.1"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
+    {"rule": "C3", "name": "placeholder with trailing-dot IPv4", "endpoints": {"account": "127.0.0.1", "basin": "{basin}.127.0.0.1."}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
+    {"rule": "C3", "name": "invalid IPv4 address", "endpoints": {"account": "127.0.0.999", "basin": "127.0.0.999"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
     {"rule": "C3", "name": "placeholder with bracketed IPv6", "endpoints": {"account": "[::1]", "basin": "{basin}.[::1]"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
     {"rule": "C3", "name": "malformed bracketed IPv6", "endpoints": {"account": "[::1::1]", "basin": "[::1::1]"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
     {"rule": "C3", "name": "placeholder with malformed bracketed IPv6", "endpoints": {"account": "example.com", "basin": "{basin}.[::1::1]"}, "basin": "my-basin-1", "expect": {"error": "ValidationError"}},
