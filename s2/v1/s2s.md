@@ -18,7 +18,7 @@ _All integers use big-endian byte order. Messages smaller than 1KiB should not b
 
 **Body** (variable):
 - Regular message is a Protobuf
-- Terminal message contains a 2-byte status code, followed by JSON error information (corresponding to unary response behavior)
+- Terminal message contains a 2-byte non-2xx HTTP status code (`300`–`599`), followed by JSON error information (corresponding to unary response behavior); any other status code is a protocol error
 
 A message's body decompresses to at most 2.5 MiB − 1 bytes, enough for any valid batch. Either side treats a message past these limits as a protocol error. A terminal message is never compressed and never carries reconnect advice (its non-terminal flag bits are ignored on receive).
 

@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {"rule": "D4", "name": "RFC 3339 lower boundary (year 0000)", "field": "access_token.expires_at", "epoch_secs": "-62167219200", "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 year 0001 lower boundary", "field": "access_token.expires_at", "epoch_secs": "-62135596800", "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 typical timestamp", "field": "access_token.expires_at", "epoch_secs": "1780315200", "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 upper boundary representable across all SDKs", "field": "access_token.expires_at", "epoch_secs": "253402207200", "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 upper boundary (year 9999)", "field": "access_token.expires_at", "epoch_secs": "253402300799", "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 upper boundary with sub-second precision", "field": "access_token.expires_at", "epoch_secs": "253402300799", "subsec_millis": 999, "expect": "valid"},
+    {"rule": "D4", "name": "RFC 3339 negative year", "field": "access_token.expires_at", "epoch_secs": "-62167219201", "expect": "ValidationError"},
+    {"rule": "D4", "name": "RFC 3339 year above 9999", "field": "access_token.expires_at", "epoch_secs": "253402300800", "expect": "ValidationError"},
+    {"rule": "D4", "name": "metrics timestamp lower boundary", "field": "metrics.timestamp", "epoch_secs": "0", "expect": {"unix_secs": "0"}},
+    {"rule": "D4", "name": "metrics timestamp floors sub-second precision", "field": "metrics.timestamp", "epoch_secs": "0", "subsec_millis": 999, "expect": {"unix_secs": "0"}},
+    {"rule": "D4", "name": "metrics timestamp upper boundary", "field": "metrics.timestamp", "epoch_secs": "4294967295", "expect": {"unix_secs": "4294967295"}},
+    {"rule": "D4", "name": "metrics timestamp upper boundary with sub-second precision", "field": "metrics.timestamp", "epoch_secs": "4294967295", "subsec_millis": 999, "expect": {"unix_secs": "4294967295"}},
+    {"rule": "D4", "name": "metrics timestamp below zero", "field": "metrics.timestamp", "epoch_secs": "-1", "expect": "ValidationError"},
+    {"rule": "D4", "name": "metrics timestamp negative sub-second floors below zero", "field": "metrics.timestamp", "epoch_secs": "-1", "subsec_millis": 999, "expect": "ValidationError"},
+    {"rule": "D4", "name": "metrics timestamp above u32 max", "field": "metrics.timestamp", "epoch_secs": "4294967296", "expect": "ValidationError"}
+  ]
+}
