@@ -79,6 +79,7 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
     - **a. Concurrent stream limit.** By default, each pooled HTTP/2 connection carries up to 50 concurrent requests—clamped to the server's advertised `SETTINGS_MAX_CONCURRENT_STREAMS` when lower and exposed by the transport—reusing connections with spare capacity before opening another. An SDK may expose a transport setting to tune this cap up to `SETTINGS_MAX_CONCURRENT_STREAMS` (100 on S2). When every live connection to an origin is at capacity or retiring (T6), a new request opens an additional connection rather than waiting for an active stream to finish or failing.
     - **b. Keep-alive.** While a pooled HTTP/2 connection has active requests, the SDK sends an HTTP/2 `PING` after at most 20 s without receiving a frame. If no `PING` acknowledgment arrives within 10 s, the SDK closes the connection and removes it from the pool, handling active requests as a broken connection (T9).
     - **c. Idle reaping.** A pooled connection with no active requests is closed and removed from the pool once it has been idle for 90 s. Retired connections still close as soon as their active requests finish (T6), without waiting for the idle timeout.
+    - **d. Flow-control isolation.** Paused or slow read sessions exerting backpressure (R6b) must not exhaust connection-level receive flow control and stall other concurrent requests or sessions sharing the connection—for example, by sizing the connection receive window to at least the connection's concurrent stream limit multiplied by its per-stream receive window, or by isolating read sessions onto separate connections.
 
 ## D. Data
 
@@ -101,7 +102,7 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
    | `ValidationError` | Input fails validation (A2, A5, C1, C2, C3, C4, C9, D4, D5) | yes | no |
    | `ConnectError` | A connection cannot be established, or `connection_timeout` elapses (T7a) | yes | yes |
    | `ConnectionLostError` | A request or connection breaks, or a response ends prematurely (T9) | only if nothing unacked was sent, or the server reports it unprocessed | yes |
-   | `TimeoutError` | `request_timeout` elapses for a response or ack (T7b, T7c), or a read session's heartbeat timeout elapses (T7d) | no | yes |
+   | `TimeoutError` | `request_timeout` elapses for a response, upload progress, or ack (T7b, T7c), or a read session's heartbeat timeout elapses (T7d) | no | yes |
    | `ProtocolError` | A successful response or session message cannot be decoded or violates an SDK check | no | no |
    | `ClientClosedError` | A call is made on a closed client (C12) | yes | no |
    | `SessionClosedError` | The session closed or began closing before handling the call (E6) | yes | no |
@@ -142,7 +143,7 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
 7. **Timeouts.** Each timeout applies within a single attempt—not across the overall call—and fails that attempt: `connection_timeout` fails with `ConnectError`, and the others fail with `TimeoutError`.
    - **a. Connection.** `connection_timeout` bounds establishing a connection, including TLS.
    - **b. Request.** `request_timeout` bounds how long the server takes to respond: on a unary call, from sending the request until the entire response is received; on a session, until a `200` response begins, or until the entire response is received if non-2xx. A unary read with `wait` has a timeout of `request_timeout + wait`.
-   - **c. Ack.** On an append session, `request_timeout` also bounds ack latency. Only the oldest unacked batch is timed, starting from when it became the oldest unacked batch or when its last byte was sent, whichever is later.
+   - **c. Ack.** On an append session, `request_timeout` also bounds upload stalls and ack latency. Only the oldest unacked batch is timed: while its bytes are still being sent, the attempt times out if `request_timeout` elapses with no upload progress since it became the oldest unacked batch (or since its last upload progress); once it is the oldest unacked batch and its last byte has been sent, the attempt times out if `request_timeout` elapses without an ack, starting from whichever of those two events occurred later.
    - **d. Heartbeat.** On a read session, a request times out if 20 s elapse while waiting for the next server message (including heartbeats). Time spent not reading because the caller has not yet consumed buffered records (R6b) does not count.
 8. **Canceling.** Canceling a unary call stops it immediately—including while waiting to retry—and does not retry it; a canceled `append()` may have taken effect. Canceling a wait on a session (in `submit()`, `flush()`, `close()` except where canceling `close()` is the language's abort trigger, awaiting a ticket, `caught_up()`, or reading the next record) cancels only that wait: no outcome changes, the session continues, and a subsequent wait produces what the canceled wait would have (A4c, A8a, R9b). Canceling a session's abort trigger aborts the session instead (A8c). How cancellation is triggered and surfaced depends on the language (see [Languages](#canceling-a-call)).
 9. **How a response ends.** A response ends cleanly when it finishes at a message boundary without a terminal frame (on `s2s`) or with a `[DONE]` event (on SSE). When an attempt's response ends, the SDK applies the first matching row:
@@ -301,7 +302,7 @@ An SDK that groups methods by resource may omit the resource name from the metho
 
 A released SDK continues working against newer server versions.
 
-1. **Parsing.** A response never fails to parse because it contains a field or value unknown to this SDK version.
+1. **Parsing.** A response never fails to parse because it contains an unknown field, an unknown enum or union value, or a server-returned string (such as a resource name or location) that does not match this SDK version's client-side validation rules (C9).
 2. **Open enums and tagged unions.** Every enum and externally tagged union (`oneOf`, such as `Metric`, `RetentionPolicy`, `PrivateNet`, and `ResourceSet`) returned by the server is open: an unrecognized value or variant is exposed by its wire name or tag in the language's idiom (such as an `Unknown` variant/type, an open string type, or a dedicated unknown-tag field on a Go struct). A closed type that can merely hold an unlisted value at runtime—such as a TypeScript string or object union without an unknown branch, or a Go struct that silently unmarshals an unknown tag as all-`nil`—does not satisfy this rule. Ensure's result is the sole exception; M2 defines how unknown values are interpreted.
 3. **Closed enums.** Every enum sent only by the SDK is closed.
 4. **Error codes.** Unrecognized server error codes follow E4c.
