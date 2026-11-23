@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - "s2/**"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   dispatch:
     environment: secret
