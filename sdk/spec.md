@@ -10,7 +10,7 @@ Rules in this specification—and choices left to individual SDKs—are guided b
 
 - Every rule is a requirement. Where an SDK has a choice, the rule explicitly uses *may*.
 - Each chapter has a letter prefix and numbered rules referenced by ID, such as `A6b`. While this revision is a draft, rule IDs may still change; once Revision 1 is finalized, rule IDs are permanently stable across future revisions (rules are never renumbered, and removed IDs are never reused). Include the revision (for example, `r1 A6b`) when the exact wording matters.
-- Names are canonical. Every SDK uses the specification's terminology in its own casing and naming convention (see [Languages](#errors) for error types), and may add unit suffixes where the language lacks a duration type. In this document, `name()` is a function or method, `Name` is a type, and any other `name` is an accessor, option, setting, value, or wire name.
+- Names are canonical. Every SDK uses the specification's terminology in its own casing and naming convention (see [Languages](#errors) for error types), and may add unit suffixes where a duration is represented as a number (for example, where the language lacks a duration type, or for whole-second API fields represented as integer seconds). In this document, `name()` is a function or method, `Name` is a type, and any other `name` is an accessor, option, setting, value, or wire name.
 
 | Chapter | Covers |
 |---|---|
@@ -395,6 +395,8 @@ This section specifies how language-dependent rules map onto Python, TypeScript,
 | TypeScript | `number`, so the exact integer range ends at `2⁵³ − 1` (`Number.MAX_SAFE_INTEGER`) | `Uint8Array` inputs are copied on acceptance |
 | Go | `uint64` | `[]byte` and any reference-held config or option fields are copied when passed (for split `Submit()`/`Wait()`, snapshotted in `Submit()` before validation so `Wait()` uses that snapshot) |
 | Rust | `u64` | None: inputs are moved in or borrowed only for the duration of the call |
+
+Whole-second API duration fields (`wait`, retention age, and delete-on-empty `min_age`, D5) may be represented either as a duration type (validated at runtime for whole-second precision and range) or as an integer count of seconds with a unit suffix where appropriate (such as Rust's `wait_secs: u32`, `RetentionPolicy::Age(u64)`, and `min_age_secs: u64`, which enforce those constraints statically).
 
 ### Accepting a record or batch
 
