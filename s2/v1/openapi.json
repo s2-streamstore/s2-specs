@@ -2244,6 +2244,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "format": "int64",
               "minimum": 0
             }
           },
@@ -4001,7 +4002,7 @@
                 "type": "integer",
                 "format": "int64",
                 "description": "Age in seconds for automatic trimming of records older than this threshold.\nThis must be set to a value greater than 0 seconds.",
-                "minimum": 0
+                "minimum": 1
               }
             }
           },
