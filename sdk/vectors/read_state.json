@@ -1,0 +1,357 @@
+{
+  "cases": [
+    {
+      "rule": "R7a",
+      "name": "unclamped seq_num start is known immediately",
+      "start": {"seq_num": "10"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": "10", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7a",
+      "name": "clamped seq_num start is unknown until first batch",
+      "start": {"seq_num": "0", "clamp": true},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "500"}, {"seq_num": "6", "timestamp": "501"}], "tail": {"seq_num": "7", "timestamp": "501"}},
+        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "7", "timestamp": "501"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "6"}, "next_seq_num": "7", "last_observed_tail": {"seq_num": "7", "timestamp": "501"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "7", "timestamp": "501"}}}}
+      ]
+    },
+    {
+      "rule": "R7a",
+      "name": "tail_offset start resolves from first heartbeat",
+      "start": {"tail_offset": "0"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "10", "timestamp": "1000"}, "expect": {"next_seq_num": "10", "last_observed_tail": {"seq_num": "10", "timestamp": "1000"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "10", "timestamp": "1000"}}}}
+      ]
+    },
+    {
+      "rule": "R7a",
+      "name": "timestamp start resolves from first batch",
+      "start": {"timestamp": "500"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "3", "timestamp": "500"}], "tail": {"seq_num": "4", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"record": "3"}, "next_seq_num": "4", "last_observed_tail": {"seq_num": "4", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "4", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R7a",
+      "name": "heartbeat advances next_seq_num past trimmed gap",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "10", "timestamp": "1000"}, "expect": {"next_seq_num": "10", "last_observed_tail": {"seq_num": "10", "timestamp": "1000"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "10", "timestamp": "1000"}}}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "multi-record tailing batch catches up only on final record",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}, {"seq_num": "2", "timestamp": "102"}], "tail": {"seq_num": "3", "timestamp": "102"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "3", "timestamp": "102"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "3", "timestamp": "102"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "2"}, "next_seq_num": "3", "last_observed_tail": {"seq_num": "3", "timestamp": "102"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "3", "timestamp": "102"}}}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "tailing batch behind tail stays not caught up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "non-tailing batch clears is_caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "501"}, {"seq_num": "6", "timestamp": "502"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "6"}, "next_seq_num": "7", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "non-tailing batch reaching stale last_observed_tail does not catch up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "4", "timestamp": "104"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "4", "timestamp": "104"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "4", "timestamp": "104"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "2", "timestamp": "102"}, {"seq_num": "3", "timestamp": "103"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"record": "2"}, "next_seq_num": "3", "last_observed_tail": {"seq_num": "4", "timestamp": "104"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "3"}, "next_seq_num": "4", "last_observed_tail": {"seq_num": "4", "timestamp": "104"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7b",
+      "name": "regressing heartbeat does not move tail backward and clears is_caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "3", "timestamp": "300"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "regressing heartbeat matching next_seq_num below last_observed_tail does not catch up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "8", "timestamp": "800"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "8", "timestamp": "800"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "8", "timestamp": "800"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "2", "timestamp": "200"}, "expect": {"next_seq_num": "2", "last_observed_tail": {"seq_num": "8", "timestamp": "800"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7b",
+      "name": "regressing tail on record batch does not move last_observed_tail backward or catch up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}], "tail": {"seq_num": "5", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "200"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "disconnect and retry preserve is_caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}], "tail": {"seq_num": "1", "timestamp": "100"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
+        {"op": "disconnect", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
+      ]
+    },
+    {
+      "rule": "R8c",
+      "name": "pending caught_up remains pending across disconnect and resolves after retry",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "disconnect", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "3", "timestamp": "300"}, "expect": {"next_seq_num": "3", "last_observed_tail": {"seq_num": "3", "timestamp": "300"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "3", "timestamp": "300"}}}}
+      ]
+    },
+    {
+      "rule": "R8a",
+      "name": "caught_up becomes pending again after non-tailing batch and fails on later error",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "501"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_error", "status": 404, "code": "stream_not_found", "message": "not found"},
+        {"op": "pull", "expect": {"iteration": {"error": "ServerError"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": {"error": "ServerError"}}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "reconnect-advised heartbeat preserves is_caught_up across handover",
+      "start": {"seq_num": "0"},
+      "stop": {"wait": "5"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_clean_end"},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R7c",
+      "name": "reconnect-advised batch delivers all records and preserves is_caught_up across handover",
+      "start": {"seq_num": "0"},
+      "stop": {"wait": "5"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}, "reconnect_advised": true},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}},
+        {"op": "receive_clean_end"},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
+      ]
+    },
+    {
+      "rule": "R9a",
+      "name": "caught-up clean stop preserves is_caught_up and caught_up across later close and abort",
+      "start": {"seq_num": "0"},
+      "stop": {"wait": "5"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_clean_end"},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "close", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "abort", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R9a",
+      "name": "streaming wait=0 at tail receives tail heartbeat then clean end",
+      "start": {"seq_num": "5"},
+      "stop": {"wait": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_clean_end"},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R9a",
+      "name": "non-caught-up clean stop fails caught_up with SessionClosedError",
+      "start": {"seq_num": "0"},
+      "stop": {"until": "1000"},
+      "steps": [
+        {"op": "receive_clean_end"},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}}
+      ]
+    },
+    {
+      "rule": "R10c",
+      "name": "count exhaustion closes on final record delivery so later abort has no effect",
+      "start": {"seq_num": "0"},
+      "stop": {"count": "2"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}},
+        {"op": "abort", "expect": {"next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}}
+      ]
+    },
+    {
+      "rule": "R10c",
+      "name": "bytes exhaustion closes on final record delivery",
+      "start": {"seq_num": "0"},
+      "stop": {"bytes": "40"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100", "body_len": 12}, {"seq_num": "1", "timestamp": "101", "body_len": 12}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}}
+      ]
+    },
+    {
+      "rule": "R9b",
+      "name": "caller close while parked fails caught_up and iteration with SessionClosedError",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "close", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}},
+        {"op": "abort", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}},
+        {"op": "pull", "expect": {"iteration": {"error": "SessionClosedError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "SessionClosedError"}}}
+      ]
+    },
+    {
+      "rule": "R9b",
+      "name": "caller close while caught up preserves is_caught_up and caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "close", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "pull", "expect": {"iteration": {"error": "SessionClosedError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R9c",
+      "name": "terminal server error while caught up preserves is_caught_up and caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_error", "status": 404, "code": "stream_not_found", "message": "not found"},
+        {"op": "pull", "expect": {"iteration": {"error": "ServerError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R9c",
+      "name": "terminal server error while not caught up fails caught_up and ignores later abort",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_error", "status": 404, "code": "stream_not_found", "message": "not found"},
+        {"op": "pull", "expect": {"iteration": {"error": "ServerError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ServerError"}}},
+        {"op": "abort", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ServerError"}}}
+      ]
+    },
+    {
+      "rule": "R9d",
+      "name": "abort while parked fails caught_up and iteration with AbortedError",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "abort", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}},
+        {"op": "pull", "expect": {"iteration": {"error": "AbortedError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}}
+      ]
+    },
+    {
+      "rule": "R9d",
+      "name": "abort mid-batch discards undelivered record and fails caught_up with AbortedError",
+      "start": {"seq_num": "0"},
+      "stop": {"count": "2"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "abort", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}},
+        {"op": "pull", "expect": {"iteration": {"error": "AbortedError"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}}
+      ]
+    },
+    {
+      "rule": "R9d",
+      "name": "abort while caught up preserves is_caught_up and caught_up",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "abort", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "pull", "expect": {"iteration": {"error": "AbortedError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid non-increasing batch is rejected atomically without mutating state",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "0", "timestamp": "101"}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid batch with record below next_seq_num is rejected atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "5", "timestamp": "105"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "101"}, {"seq_num": "2", "timestamp": "102"}], "tail": {"seq_num": "9", "timestamp": "109"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "105"}, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid batch with tail at or below last record is rejected atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "1", "timestamp": "101"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid batch with unrepresentable successor seq_num is rejected atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "18446744073709551615", "timestamp": "100"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    }
+  ]
+}
