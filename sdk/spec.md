@@ -119,6 +119,7 @@ Every error surfaced to the caller exposes two predicates indicating what is saf
 5. **Wrapping.** A definite final error guarantees no side effects only for the last attempt. If an earlier attempt of the same append may have taken effect, the append fails instead with `IndefiniteAppendError` wrapping that final error, which is indefinite. This applies to unary `append()` and to every batch in an append session (A6b).
    - **a.** Wrapper errors (`IndefiniteAppendError` and `SessionClosedError`) are distinct from their inner error: they do not copy its status or code, and they do not match as its type.
    - **b.** The inner error is exposed through a typed accessor: `final_attempt_error` on `IndefiniteAppendError`, and `failure` on `SessionClosedError`. In languages where type matching does not traverse error causes (Python, TypeScript, Rust), the inner error is also set as the wrapper's cause; in Go, where `errors.As` traverses `Unwrap`, it is not (see [Languages](#errors)).
+   - **c.** `root_cause()` on `S2Error` (and, in Rust, on wrapper-bearing operation error enums; see [Languages](#errors)) recursively unwraps `IndefiniteAppendError` (via `final_attempt_error`) and `SessionClosedError` (via `failure`, when present), returning the innermost `S2Error`. It stops at a clean `SessionClosedError` (empty `failure`) or any non-wrapper error—including `AbortedError`, without traversing its cause. Side-effect and retry predicates (E4) remain properties of the outer error.
 6. **`SessionClosedError`.** Indicates that a session closed or started closing without performing the requested operation, and never will: an append session will not append the record or batch, and a read session will not deliver another record or catch up. It is definite. Its message includes the session failure's message, if any. Its `failure` accessor returns the session's failure, or is empty if the session had none when the call failed.
 7. **Messages.** Every error message identifies the operation that failed, the basin and stream names (when applicable), and the number of attempts made if more than one.
 8. **Unobserved errors.** Errors that the caller never awaits—such as an unawaited ticket or `caught_up()` future—must not produce unhandled-rejection or unretrieved-exception warnings, and must not be logged above debug level.
@@ -234,7 +235,7 @@ This chapter covers unary `append()` and two continuous append abstractions: `Ap
 
 This chapter covers `read()`, `check_tail()`, and `ReadSession`. Rules R1 and R2 define read options shared by `read()` and `ReadSession`; rules R5 through R11 apply to `ReadSession`.
 
-1. **Read start.** At most one of `seq_num`, `timestamp`, or `tail_offset`—represented in a type that cannot hold more than one—together with `clamp`. Their semantics are defined by the API. Omitting a start sends no start parameter, causing the API to begin at the tail.
+1. **Read start.** At most one of `seq_num`, `timestamp`, or `tail_offset`—represented in a type that cannot hold more than one—together with `clamp`. Their semantics are defined by the API. Omitting a start sends no start parameter, causing the API to begin at the tail (equivalent to `tail_offset` of `0`). An SDK may require specifying a start explicitly rather than permitting omission, and may omit the `tail_offset` query parameter when it is `0`.
 2. **Read stop.** Any combination of `count` and `bytes` limits, an exclusive `until` timestamp, and `wait` (how long to wait for new records). Their semantics and defaults are defined by the API, and the SDK leaves omitted options unset for the server. On a session, `wait` bounds the idle time between records.
 3. **Unary read.** `read()` returns a single batch exactly as sent by the server: its records, and the tail if reported. A batch is empty only when a stop condition was met before any record—such as `wait` expiring at the tail—and does not indicate end-of-stream. With `wait` set to 0, a read starting at the tail returns `416` from the API instead (E2b).
 4. **Tail.** `check_tail()` returns the stream's tail position.
@@ -372,7 +373,7 @@ Several SDK rules rely on specific server behavior. The table below lists each g
 | A heartbeat carries the tail and is sent only when the server has no earlier records left to send. | R7a, R7c, R8 | [`s2s.md`](../s2/v1/s2s.md) |
 | When a non-empty read batch carries a tail, `tail.seq_num` is strictly greater than every record's `seq_num` in the batch. | R6, R7c | [Read](https://s2.dev/docs/api/records/read) |
 | With `wait` of 0, a read starting at the tail returns `416`. | R3, R11d | [Read](https://s2.dev/docs/api/records/read) |
-| A read with no start parameter begins at the tail. | R1 | [`openapi.json`](../s2/v1/openapi.json) |
+| A read with no start parameter begins at the tail (equivalent to `tail_offset` of `0`). | R1 | [`openapi.json`](../s2/v1/openapi.json) |
 | Errors listed with no side effects in `error-codes.json` had none. | Terms, E4a | [`error-codes.json`](../s2/v1/error-codes.json) |
 | A unary append rejected for rate limiting includes `retry-after-ms`. | T3 | [`openapi.json`](../s2/v1/openapi.json) |
 | Retrying a create request with the same `s2-request-token` does not conflict with the earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
@@ -457,7 +458,7 @@ In Go, `net/http`'s `Response.Body.Read` cannot be canceled independently withou
 | Go | Struct pointer `*XError`, matched with `errors.As` | Interface `S2Error`, implemented by every error | Type that `errors.As` also matches as `*ServerError` | None (kept out of the `Unwrap` chain) | The context error, in the `Unwrap` chain so `errors.Is(err, context.Canceled)` holds |
 | Rust | Variant `X` of the operation's error enum | `S2Error`, which every operation's error enum converts into | Variant of the operation's error enum carrying `ServerError` | `source()` | None |
 
-In Rust, the E4 predicates are exposed on `S2Error` and the operation error enums; standalone single-kind errors (such as `ValidationError` and `ClientClosedError`) convert into them rather than repeating constant predicates.
+In Rust, the E4 predicates are exposed on `S2Error` and the operation error enums, and `root_cause()` (E5c) is exposed on `S2Error` and the wrapper-bearing operation error enums (`AppendError`, `AppendSessionError`, `ReadSessionError`); standalone single-kind errors (such as `ValidationError` and `ClientClosedError`) convert into them rather than repeating constant predicates.
 
 ### TypeScript stream adapters
 
