@@ -76,6 +76,6 @@ message ReadBatch {
   // In the context of a session, it can be empty only as a heartbeat message carrying `tail`, sent while waiting for new records (at least every 15 seconds) or before ending cleanly at the tail.
   repeated SequencedRecord records = 1;
   // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.
-  // Present only when reading recent records or on a session heartbeat; always present on the final message when a session ends cleanly at the tail.
+  // Present only when reading recent records or on a session heartbeat; always present on the final message when a session reaches the tail with no `wait` remaining, unless that message exhausted `count` or `bytes`.
   optional StreamPosition tail = 2;
 }
