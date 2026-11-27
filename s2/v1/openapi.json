@@ -99,6 +99,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       },
@@ -168,6 +188,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -226,6 +266,26 @@
           },
           "408": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -322,6 +382,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       },
@@ -410,6 +490,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -485,6 +585,26 @@
           },
           "409": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -605,6 +725,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       },
@@ -671,6 +811,26 @@
           },
           "409": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -758,6 +918,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -812,6 +992,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -846,6 +1046,26 @@
           },
           "408": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -905,6 +1125,26 @@
           },
           "408": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1018,6 +1258,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -1113,6 +1373,26 @@
           },
           "408": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1231,6 +1511,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       }
@@ -1316,6 +1616,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       },
@@ -1378,6 +1698,26 @@
           },
           "409": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1457,6 +1797,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
           }
         }
       },
@@ -1523,6 +1883,26 @@
           },
           "409": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorInfo"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (`rate_limited`).",
+            "headers": {
+              "retry-after-ms": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "description": "Milliseconds to wait before retrying."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2220,7 +2600,7 @@
           {
             "name": "clamp",
             "in": "query",
-            "description": "Start reading from the tail if the requested position is beyond it.\nOtherwise, a `416 Range Not Satisfiable` response is returned.",
+            "description": "Start reading from the tail if the requested position is beyond it (`seq_num > tail.seq_num` or `timestamp > tail.timestamp`).\nWithout `clamp`, such a request returns `416 Range Not Satisfiable`.",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -2260,7 +2640,7 @@
           {
             "name": "wait",
             "in": "query",
-            "description": "Duration in seconds to wait for new records.\nThe default duration is 0 if there is a bound on `count`, `bytes`, or `until`, and otherwise infinite.\nNon-streaming reads are always bounded on `count` and `bytes`, so you can achieve long poll semantics by specifying a non-zero duration up to 60 seconds.\nIn the context of an SSE or S2S streaming read, the duration will bound how much time can elapse between records throughout the lifetime of the session.",
+            "description": "Duration in seconds to wait for new records.\nThe default duration is 0 if there is a bound on `count`, `bytes`, or `until`, and otherwise infinite.\nNon-streaming reads are always bounded on `count` and `bytes`, so you can achieve long poll semantics by specifying a non-zero duration up to 60 seconds.\nIn the context of an SSE or S2S streaming read, the duration will bound how much time can elapse between records throughout the lifetime of the session.\nWhen `wait` is 0 (explicitly or by default), a unary read that reaches the tail with no records returns `416`. A streaming read that reaches the tail before `count`, `bytes`, or `until` stops it ends cleanly after a message carrying the tail, as it also does once `wait` elapses.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2336,7 +2716,7 @@
             }
           },
           "416": {
-            "description": "",
+            "description": "Requested starting position is beyond the tail without `clamp` (`seq_num > tail.seq_num` or `timestamp > tail.timestamp`), or a unary read with `wait` of `0` reached the tail with no records to return.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3732,7 +4112,7 @@
       },
       "PingEventData": {
         "type": "object",
-        "description": "Heartbeat emitted while waiting at the tail for new records, sent only once all records before `tail` have been delivered.",
+        "description": "Heartbeat carrying the tail, sent only once all records before `tail` have been delivered.\nEmitted while waiting at the tail for new records, and before `[DONE]` if the read ends at the tail and the preceding event did not already report it.",
         "required": [
           "timestamp",
           "tail"
@@ -3836,7 +4216,7 @@
               },
               {
                 "$ref": "#/components/schemas/StreamPosition",
-                "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.\nThis will only be present when reading recent records."
+                "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.\nPresent only when reading recent records. On a streaming read that reaches the tail without exhausting `count` or `bytes`, `tail` is reported on the final `batch` or a trailing `ping` event."
               }
             ]
           }
