@@ -73,7 +73,7 @@ message SequencedRecord {
 message ReadBatch {
   // Records that are durably sequenced on the stream, retrieved based on the requested criteria.
   // This can only be empty in response to a unary read if the request cannot be satisfied without violating an explicit bound (`count`, `bytes`, `until`, or `wait`).
-  // In the context of a session, it can be empty only as a heartbeat message carrying `tail`: sent at least every 15 seconds while waiting for new records, and before ending cleanly at the tail with no `wait` remaining if the last record batch did not already carry that tail.
+  // In the context of a session, it can be empty only as a heartbeat message carrying `tail`: sent at least every 15 seconds while waiting for new records, and before ending cleanly at the tail with no `wait` remaining (may be omitted when the final record batch already carries that `tail`).
   repeated SequencedRecord records = 1;
   // Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.
   // It will only be present when reading recent records, or on a session heartbeat.
