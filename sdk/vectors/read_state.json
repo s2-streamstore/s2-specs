@@ -248,6 +248,18 @@
       ]
     },
     {
+      "rule": "T6a",
+      "name": "second reconnect-advised message during cooldown is ignored without handover",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "501"}], "tail": {"seq_num": "6", "timestamp": "501"}, "reconnect_advised": true},
+        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "501"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "501"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "6", "timestamp": "502"}], "tail": {"seq_num": "7", "timestamp": "502"}},
+        {"op": "pull", "expect": {"iteration": {"record": "6"}, "next_seq_num": "7", "last_observed_tail": {"seq_num": "7", "timestamp": "502"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "7", "timestamp": "502"}}}}
+      ]
+    },
+    {
       "rule": "R7c",
       "name": "reconnect-advised batch delivers all records and preserves is_caught_up across handover",
       "start": {"seq_num": "0"},
@@ -395,6 +407,18 @@
       ]
     },
     {
+      "rule": "R10c",
+      "name": "reconnect-advised batch exhausting count delivers records and closes cleanly without handover",
+      "start": {"seq_num": "0"},
+      "stop": {"count": "2"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}, "reconnect_advised": true},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}},
+        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
+      ]
+    },
+    {
       "rule": "R9a",
       "name": "count exhaustion on non-tailing batch closes cleanly without catching up",
       "start": {"seq_num": "0"},
@@ -514,6 +538,15 @@
     },
     {
       "rule": "R6",
+      "name": "invalid empty tail-less batch with reconnect_advised is rejected atomically as ProtocolError",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [], "tail": null, "reconnect_advised": true},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
       "name": "invalid batch while caught up fails iteration with ProtocolError while preserving caught-up state",
       "start": {"seq_num": "0"},
       "steps": [
@@ -597,6 +630,21 @@
           "op": "pull",
           "expect": {
             "if_representable": {"iteration": "clean", "next_seq_num": "9007199254740992", "last_observed_tail": {"seq_num": "9007199254740992", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "9007199254740992", "timestamp": "100"}}},
+            "otherwise": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}
+          }
+        }
+      ]
+    },
+    {
+      "rule": "D4",
+      "name": "record timestamp above 2^53 - 1 fails with ProtocolError if unrepresentable",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "9007199254740992"}], "tail": null},
+        {
+          "op": "pull",
+          "expect": {
+            "if_representable": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"},
             "otherwise": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}
           }
         }
