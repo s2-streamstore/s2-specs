@@ -245,6 +245,7 @@
       "steps": [
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true},
         {"op": "next_request", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}},
         {"op": "receive_clean_end"},
         {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
       ]
@@ -272,6 +273,7 @@
         {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": false, "caught_up": "pending"}},
         {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}},
         {"op": "next_request", "expect": {"next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}, "expect_request": {"seq_num": "2", "clamp": null}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "2", "timestamp": "101"}},
         {"op": "receive_clean_end"},
         {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
       ]
