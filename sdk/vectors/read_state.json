@@ -181,15 +181,14 @@
       ]
     },
     {
-      "rule": "R7b",
-      "name": "tail ordering keeps higher timestamp when seq_num is equal",
+      "rule": "R6",
+      "name": "regressing heartbeat tail timestamp at equal seq_num fails with ProtocolError",
       "start": {"seq_num": "0"},
       "stop": {"wait": "5"},
       "steps": [
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "400"}},
-        {"op": "receive_clean_end"},
-        {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
       ]
     },
     {
@@ -209,7 +208,8 @@
       "steps": [
         {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}], "tail": {"seq_num": "1", "timestamp": "100"}},
         {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
-        {"op": "disconnect", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
         {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}},
         {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
       ]
@@ -220,7 +220,8 @@
       "start": {"seq_num": "0"},
       "steps": [
         {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
-        {"op": "disconnect", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
         {"op": "receive_heartbeat", "tail": {"seq_num": "3", "timestamp": "300"}, "expect": {"next_seq_num": "3", "last_observed_tail": {"seq_num": "3", "timestamp": "300"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "3", "timestamp": "300"}}}}
       ]
     },
@@ -242,7 +243,8 @@
       "start": {"seq_num": "0"},
       "stop": {"wait": "5"},
       "steps": [
-        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true},
+        {"op": "next_request", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
         {"op": "receive_clean_end"},
         {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
       ]
@@ -252,7 +254,8 @@
       "name": "second reconnect-advised message during cooldown is ignored without handover",
       "start": {"seq_num": "0"},
       "steps": [
-        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "reconnect_advised": true},
+        {"op": "next_request", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}, "expect_request": {"seq_num": "5", "clamp": null}},
         {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "501"}], "tail": {"seq_num": "6", "timestamp": "501"}, "reconnect_advised": true},
         {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "501"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "501"}}}},
         {"op": "receive_batch", "records": [{"seq_num": "6", "timestamp": "502"}], "tail": {"seq_num": "7", "timestamp": "502"}},
@@ -268,6 +271,7 @@
         {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}, "reconnect_advised": true},
         {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": false, "caught_up": "pending"}},
         {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}},
+        {"op": "next_request", "expect": {"next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}, "expect_request": {"seq_num": "2", "clamp": null}},
         {"op": "receive_clean_end"},
         {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
       ]
@@ -287,7 +291,8 @@
       "start": {"seq_num": "0"},
       "steps": [
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
-        {"op": "disconnect", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
         {"op": "receive_error", "status": 416, "tail": {"seq_num": "1", "timestamp": "100"}},
         {"op": "pull", "expect": {"iteration": {"error": "ReadUnwrittenError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
       ]
@@ -502,7 +507,8 @@
       "steps": [
         {"op": "check", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
         {"op": "abort", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}},
-        {"op": "pull", "expect": {"iteration": {"error": "AbortedError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}}
+        {"op": "pull", "expect": {"iteration": {"error": "AbortedError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}},
+        {"op": "close", "expect": {"next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "AbortedError"}}}
       ]
     },
     {
@@ -655,9 +661,11 @@
       "name": "tail_offset start is resent until first heartbeat resolves seq_num",
       "start": {"tail_offset": "5"},
       "steps": [
-        {"op": "disconnect", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"tail_offset": "5", "seq_num": null, "timestamp": null, "clamp": null}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"tail_offset": "5", "seq_num": null, "timestamp": null, "clamp": null}},
         {"op": "receive_heartbeat", "tail": {"seq_num": "10", "timestamp": "1000"}, "expect": {"next_seq_num": "10", "last_observed_tail": {"seq_num": "10", "timestamp": "1000"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "10", "timestamp": "1000"}}}},
-        {"op": "disconnect", "expect": {"next_seq_num": "10", "last_observed_tail": {"seq_num": "10", "timestamp": "1000"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "10", "timestamp": "1000"}}}, "expect_request": {"seq_num": "10", "tail_offset": null, "timestamp": null, "clamp": null}}
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "10", "last_observed_tail": {"seq_num": "10", "timestamp": "1000"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "10", "timestamp": "1000"}}}, "expect_request": {"seq_num": "10", "tail_offset": null, "timestamp": null, "clamp": null}}
       ]
     },
     {
@@ -665,10 +673,12 @@
       "name": "timestamp start with clamp is resent until first batch resolves seq_num without clamp",
       "start": {"timestamp": "500", "clamp": true},
       "steps": [
-        {"op": "disconnect", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"timestamp": "500", "clamp": true, "seq_num": null, "tail_offset": null}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"timestamp": "500", "clamp": true, "seq_num": null, "tail_offset": null}},
         {"op": "receive_batch", "records": [{"seq_num": "3", "timestamp": "500"}], "tail": {"seq_num": "4", "timestamp": "500"}},
         {"op": "pull", "expect": {"iteration": {"record": "3"}, "next_seq_num": "4", "last_observed_tail": {"seq_num": "4", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "4", "timestamp": "500"}}}},
-        {"op": "disconnect", "expect": {"next_seq_num": "4", "last_observed_tail": {"seq_num": "4", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "4", "timestamp": "500"}}}, "expect_request": {"seq_num": "4", "timestamp": null, "tail_offset": null, "clamp": null}}
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "4", "last_observed_tail": {"seq_num": "4", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "4", "timestamp": "500"}}}, "expect_request": {"seq_num": "4", "timestamp": null, "tail_offset": null, "clamp": null}}
       ]
     },
     {
@@ -676,22 +686,25 @@
       "name": "clamped seq_num start drops clamp after first batch resolves cursor",
       "start": {"seq_num": "99", "clamp": true},
       "steps": [
-        {"op": "disconnect", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"seq_num": "99", "clamp": true, "timestamp": null, "tail_offset": null}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": null, "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"seq_num": "99", "clamp": true, "timestamp": null, "tail_offset": null}},
         {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "500"}], "tail": {"seq_num": "6", "timestamp": "500"}},
         {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "500"}}}},
-        {"op": "disconnect", "expect": {"next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "500"}}}, "expect_request": {"seq_num": "6", "clamp": null, "timestamp": null, "tail_offset": null}}
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "500"}}}, "expect_request": {"seq_num": "6", "clamp": null, "timestamp": null, "tail_offset": null}}
       ]
     },
     {
       "rule": "R10a",
-      "name": "reconnect resumes at first unfetched record with remaining count, bytes, and until",
+      "name": "reconnect resumes at next_seq_num with remaining count, bytes, and until",
       "start": {"seq_num": "0"},
       "stop": {"count": "5", "bytes": "100", "until": "999"},
       "steps": [
         {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100", "body_len": 12}, {"seq_num": "1", "timestamp": "101", "body_len": 22}], "tail": null},
         {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
         {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
-        {"op": "disconnect", "expect": {"next_seq_num": "2", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"seq_num": "2", "count": "3", "bytes": "50", "until": "999", "clamp": null}},
+        {"op": "disconnect"},
+        {"op": "next_request", "expect": {"next_seq_num": "2", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}, "expect_request": {"seq_num": "2", "count": "3", "bytes": "50", "until": "999", "clamp": null}},
         {"op": "receive_heartbeat", "tail": {"seq_num": "2", "timestamp": "101"}, "expect": {"next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}},
         {"op": "receive_clean_end"},
         {"op": "pull", "expect": {"iteration": "clean", "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
@@ -704,7 +717,8 @@
       "steps": [
         {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}], "tail": {"seq_num": "1", "timestamp": "100"}},
         {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}},
-        {"op": "receive_error", "status": 503, "code": "server_draining", "message": "draining", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}, "expect_request": {"seq_num": "1", "clamp": null}},
+        {"op": "receive_error", "status": 503, "code": "server_draining", "message": "draining"},
+        {"op": "next_request", "expect": {"next_seq_num": "1", "last_observed_tail": {"seq_num": "1", "timestamp": "100"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "1", "timestamp": "100"}}}, "expect_request": {"seq_num": "1", "clamp": null}},
         {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "2", "timestamp": "101"}},
         {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "2", "timestamp": "101"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "2", "timestamp": "101"}}}}
       ]
