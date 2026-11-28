@@ -2631,7 +2631,7 @@
           {
             "name": "until",
             "in": "query",
-            "description": "Exclusive timestamp to read until.",
+            "description": "Exclusive timestamp to read until.\nIf the stream's tail is already at or past `until`, the read stops immediately with no further records.",
             "required": false,
             "schema": {
               "$ref": "#/components/schemas/u64"
