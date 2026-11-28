@@ -192,13 +192,23 @@
       ]
     },
     {
-      "rule": "R7b",
-      "name": "tail ordering advances when seq_num increases even with lower timestamp",
+      "rule": "R6",
+      "name": "regressing tail timestamp at higher seq_num fails atomically with ProtocolError",
       "start": {"seq_num": "0"},
       "steps": [
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
         {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "400"}], "tail": {"seq_num": "6", "timestamp": "400"}},
-        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "400"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "400"}}}}
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R7b",
+      "name": "tail advances when seq_num increases with equal timestamp",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "500"}], "tail": {"seq_num": "6", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"record": "5"}, "next_seq_num": "6", "last_observed_tail": {"seq_num": "6", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "6", "timestamp": "500"}}}}
       ]
     },
     {
