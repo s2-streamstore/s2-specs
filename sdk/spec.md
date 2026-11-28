@@ -376,7 +376,7 @@ Several SDK rules rely on specific server behavior. The table below lists each g
 | With `wait` of 0, a read starting at the tail returns `416`. | R3, R7c, R11d | [Read](https://s2.dev/docs/api/records/read) |
 | A read with no start parameter begins at the tail (equivalent to `tail_offset` of `0`). | R1 | [`openapi.json`](../s2/v1/openapi.json) |
 | Errors listed with no side effects in `error-codes.json` had none. | Terms, E4a | [`error-codes.json`](../s2/v1/error-codes.json) |
-| A unary append rejected for rate limiting includes `retry-after-ms`. | T3 | [`openapi.json`](../s2/v1/openapi.json) |
+| A unary request rejected for rate limiting includes `retry-after-ms`. | T3 | [`openapi.json`](../s2/v1/openapi.json) |
 | Retrying a create request with the same `s2-request-token` does not conflict with the earlier attempt. | T2b, M1 | [`openapi.json`](../s2/v1/openapi.json) |
 | Ensuring an existing basin or stream sets its config to the provided one, with omitted fields reset to their defaults. | M2 | [`openapi.json`](../s2/v1/openapi.json) |
 | Ensure reports its outcome in the `s2-provision-result` header: `created`, `updated`, or `noop`. | M2 | [`openapi.json`](../s2/v1/openapi.json) |
