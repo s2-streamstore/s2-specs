@@ -367,7 +367,7 @@ The following constants are fixed and defined by the cited rules:
 
 ## Server guarantees
 
-Several SDK rules rely on specific server behavior. The table below lists each guarantee, the rules that depend on it, and where it is documented.
+Several SDK rules rely on specific server behavior. Each row below states only the minimal invariant those rules depend on and links to its authoritative source for full API and wire semantics.
 
 | Guarantee | Relied on by | Source |
 |---|---|---|
