@@ -193,11 +193,11 @@
     },
     {
       "rule": "R6",
-      "name": "regressing tail timestamp at higher seq_num fails atomically with ProtocolError",
+      "name": "regressing heartbeat tail timestamp at higher seq_num fails with ProtocolError",
       "start": {"seq_num": "0"},
       "steps": [
         {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
-        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "400"}], "tail": {"seq_num": "6", "timestamp": "400"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "6", "timestamp": "400"}},
         {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
       ]
     },
@@ -610,6 +610,68 @@
       "steps": [
         {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}, {"seq_num": "1", "timestamp": "101"}], "tail": {"seq_num": "1", "timestamp": "101"}},
         {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid batch with decreasing record timestamp is rejected atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "200"}, {"seq_num": "1", "timestamp": "199"}], "tail": {"seq_num": "5", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "equal consecutive record timestamps succeed while cross-batch timestamp regression fails atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "200"}, {"seq_num": "1", "timestamp": "200"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "2", "timestamp": "199"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "2", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "invalid batch with tail timestamp below last record timestamp is rejected atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "200"}], "tail": {"seq_num": "1", "timestamp": "199"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "0", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "heartbeat with tail timestamp below last record timestamp fails with ProtocolError",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "200"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": null, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "199"}},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "1", "last_observed_tail": null, "is_caught_up": false, "caught_up": {"error": "ProtocolError"}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "batch with record timestamp below prior heartbeat tail timestamp fails atomically",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_heartbeat", "tail": {"seq_num": "5", "timestamp": "500"}, "expect": {"next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}},
+        {"op": "receive_batch", "records": [{"seq_num": "5", "timestamp": "499"}], "tail": null},
+        {"op": "pull", "expect": {"iteration": {"error": "ProtocolError"}, "next_seq_num": "5", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": true, "caught_up": {"resolved": {"seq_num": "5", "timestamp": "500"}}}}
+      ]
+    },
+    {
+      "rule": "R6",
+      "name": "behind-tail batch record with timestamp below last_observed_tail succeeds when non-decreasing from prior record",
+      "start": {"seq_num": "0"},
+      "steps": [
+        {"op": "receive_batch", "records": [{"seq_num": "0", "timestamp": "100"}], "tail": {"seq_num": "5", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"record": "0"}, "next_seq_num": "1", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}},
+        {"op": "receive_batch", "records": [{"seq_num": "1", "timestamp": "200"}], "tail": {"seq_num": "5", "timestamp": "500"}},
+        {"op": "pull", "expect": {"iteration": {"record": "1"}, "next_seq_num": "2", "last_observed_tail": {"seq_num": "5", "timestamp": "500"}, "is_caught_up": false, "caught_up": "pending"}}
       ]
     },
     {
