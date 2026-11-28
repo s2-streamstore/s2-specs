@@ -9,7 +9,7 @@ Keep server/API contracts and SDK requirements cleanly separated so they cannot 
 - **API and wire contracts (`s2/v1/`):** `s2/v1/openapi.json`, `s2/v1/s2.proto`, `s2/v1/s2s.md`, and `s2/v1/error-codes.json` (together with `s2.dev/docs`) are the single source of truth for server and API behavior.
   - Regenerate `s2/v1/openapi.json` from `s2-streamstore/s2` `main` (`cargo run --locked -p s2-lite --features utoipa --bin openapi`); never hand-edit generated OpenAPI descriptions or schemas.
   - Keep `s2/v1/s2s.md` focused on the `s2s` wire protocol in plain language (it is embedded in public Mintlify docs; avoid internal spec filenames or SDK jargon).
-- **SDK specification (`sdk/spec.md`):** `Terms` and chapters `C`–`M` state **SDK requirements only**.
+- **SDK specification (`sdk/spec.md`):** `Terms` and all lettered chapters state **SDK requirements only**.
   - For every sentence, ask: *is this something an SDK must implement, or something the server promises?* Do not restate API option defaults or server behavior in chapter rules unless an SDK must enforce or rely on it directly (such as `A6c` on non-session transports, or `R1`'s `tail_offset=0` equivalence).
   - **`## Server guarantees`** is a concise dependency index (1–2 sentences per row): state only the minimal server invariant an SDK rule breaks without (`Relied on by`) and link to its authoritative source (`Source`). Omit server behavior no SDK rule relies on, full wire/framing details, and server-version rollout notes.
 - **Rationale (`sdk/rationale.md`):** Informative only. Put design reasoning, trade-offs, cross-SDK notes, and server-version rollout context here—never normative requirements.
