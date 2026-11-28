@@ -2640,7 +2640,7 @@
           {
             "name": "wait",
             "in": "query",
-            "description": "Duration in seconds to wait for new records.\nThe default duration is 0 if there is a bound on `count`, `bytes`, or `until`, and otherwise infinite.\nNon-streaming reads are always bounded on `count` and `bytes`, so you can achieve long poll semantics by specifying a non-zero duration up to 60 seconds.\nIn the context of an SSE or S2S streaming read, the duration will bound how much time can elapse between records throughout the lifetime of the session.\nWhen `wait` is 0 (explicitly or by default), a unary read that reaches the tail with no records returns `416` unless stopped first by `count`, `bytes`, or `until`. A streaming read that ends cleanly at the tail (with `wait` of `0` or once `wait` expires)—rather than stopping on `count`, `bytes`, or `until`—finishes with a message carrying the catching-up `tail`.",
+            "description": "Duration in seconds to wait for new records.\nThe default duration is 0 if there is a bound on `count`, `bytes`, or `until`, and otherwise infinite.\nNon-streaming reads are always bounded on `count` and `bytes`, so you can achieve long poll semantics by specifying a non-zero duration up to 60 seconds.\nIn the context of an SSE or S2S streaming read, the duration will bound how much time can elapse between records throughout the lifetime of the session.\nWhen `wait` is 0 (explicitly or by default), a unary read that reaches the tail with no records returns `416` unless stopped first by `count`, `bytes`, or `until`. A streaming read that ends cleanly at the tail (other than by exhausting `count` or `bytes`) finishes with a message carrying the catching-up `tail`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -4216,7 +4216,7 @@
               },
               {
                 "$ref": "#/components/schemas/StreamPosition",
-                "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.\nPresent only when reading recent records. When a streaming read ends cleanly at the tail (with `wait` of `0` or once `wait` expires)—rather than stopping on `count`, `bytes`, or `until`—the final message is either a `batch` with `tail.seq_num` one past its last record or a trailing `ping` event carrying `tail`."
+                "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.\nPresent only when reading recent records. When a streaming read ends cleanly at the tail (other than by exhausting `count` or `bytes`), the final message is either a `batch` with `tail.seq_num` one past its last record or a trailing `ping` event carrying `tail`."
               }
             ]
           }
