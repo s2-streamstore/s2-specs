@@ -3732,7 +3732,7 @@
       },
       "PingEventData": {
         "type": "object",
-        "description": "Heartbeat carrying the tail, sent only once all records before `tail` have been delivered.\nEmitted while waiting at the tail for new records, and before `[DONE]` if the read ends at the tail and the preceding event did not already report it.",
+        "description": "Heartbeat carrying the tail, sent only once all records before `tail` have been delivered.\nEmitted while waiting at the tail for new records, or before `[DONE]` when ending cleanly at the tail.",
         "required": [
           "timestamp",
           "tail"
